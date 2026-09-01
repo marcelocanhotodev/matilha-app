@@ -1,0 +1,10 @@
+Esta pasta guarda propostas de mudança em andamento (fluxo Proposal → Apply → Archive).
+Está vazia porque este é o scaffold inicial do projeto — ainda não há nenhuma
+mudança em andamento sobre a baseline definida em openspec/specs/.
+
+Para começar a implementar a capability "clientes", por exemplo, crie:
+  openspec/changes/implementar-clientes/proposal.md
+  openspec/changes/implementar-clientes/tasks.md
+  openspec/changes/implementar-clientes/design.md (opcional)
+
+Veja openspec/AGENTS.md para o fluxo completo.

@@ -1,0 +1,2 @@
+Pasta de assets estáticos do Next.js (favicon, imagens, etc.).
+Existe vazia por enquanto — o Dockerfile de produção espera que ./public exista.

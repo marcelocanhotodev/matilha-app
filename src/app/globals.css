@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Estilo de input compartilhado pelos formulários de negócio (ex: modal
+     de cliente) — muitos campos por formulário, então uma classe evita
+     repetir a mesma string de utilities em cada input. Formulários curtos
+     (ex: login-form.tsx) continuam inlining direto, sem precisar disso. */
+  .campo-input {
+    @apply rounded-md border border-sage-300 bg-white px-3 py-2 text-sm text-pine-900 outline-none focus:border-sage-500;
+  }
+}

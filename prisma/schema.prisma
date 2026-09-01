@@ -1,0 +1,309 @@
+// ============================================================================
+// Matilha — schema Prisma / PostgreSQL
+//
+// Padrão de multi-tenancy: shared schema + tenant_id.
+// Toda tabela de negócio carrega `clinicaId` e um índice sobre ela.
+// Ver openspec/project.md e openspec/specs/autenticacao-multi-clinica/spec.md
+// para a regra de isolamento entre clínicas.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PapelUsuario {
+  ADMIN
+  VETERINARIO
+  RECEPCAO
+}
+
+enum TipoPessoa {
+  FISICA
+  JURIDICA
+}
+
+enum Especie {
+  CAO
+  GATO
+  OUTRO
+}
+
+enum Sexo {
+  MACHO
+  FEMEA
+}
+
+enum Porte {
+  PEQUENO
+  MEDIO
+  GRANDE
+}
+
+enum StatusCastracao {
+  SIM
+  NAO
+  NAO_INFORMADO
+}
+
+enum StatusAgendamento {
+  AGUARDANDO
+  EM_ATENDIMENTO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum CategoriaCatalogo {
+  SERVICO
+  PRODUTO
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+}
+
+// ---------------------------------------------------------------------------
+// Identidade / multi-tenancy
+// ---------------------------------------------------------------------------
+
+model Clinica {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String?
+  criadoEm  DateTime @default(now())
+
+  usuarios      UsuarioClinica[]
+  clientes      Cliente[]
+  pacientes     Paciente[]
+  agendamentos  Agendamento[]
+  itensCatalogo ItemCatalogo[]
+  comandas      Comanda[]
+
+  @@map("clinicas")
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  criadoEm     DateTime @default(now())
+
+  clinicas             UsuarioClinica[]
+  agendamentosComoVet  Agendamento[]     @relation("AgendamentoVeterinario")
+  comandasComoVet      Comanda[]         @relation("ComandaVeterinario")
+
+  @@map("usuarios")
+}
+
+/// Tabela de junção N:N entre Usuario e Clinica, com o papel do usuário
+/// dentro de cada clínica (um mesmo usuário pode ter papéis diferentes em
+/// clínicas diferentes).
+model UsuarioClinica {
+  usuarioId String
+  clinicaId String
+  papel     PapelUsuario
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  clinica Clinica @relation(fields: [clinicaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, clinicaId])
+  @@index([clinicaId])
+  @@map("usuarios_clinicas")
+}
+
+// ---------------------------------------------------------------------------
+// Cliente (tutor) — inclui os dados necessários para futura emissão de NFS-e
+// ---------------------------------------------------------------------------
+
+model Cliente {
+  id        String     @id @default(cuid())
+  clinicaId String
+  tipo      TipoPessoa
+
+  // Identificação — pessoa física
+  nome        String // nome completo (física) ou razão social (jurídica)
+  cpf         String?
+  nascimento  DateTime?
+
+  // Identificação — pessoa jurídica
+  cnpj String?
+  ie   String? // inscrição estadual, ou "Isento"
+
+  // Contato
+  email   String
+  celular String?
+
+  // Endereço (exigido para NFS-e)
+  cep          String?
+  logradouro   String?
+  numero       String?
+  complemento  String?
+  bairro       String?
+  cidade       String?
+  uf           String?
+
+  // Exclusão lógica — nunca exclusão física (ver openspec/changes/
+  // implementar-clientes/design.md, Decisão 1). Inativar não desvincula nem
+  // apaga Paciente/Comanda associados.
+  ativo Boolean @default(true)
+
+  criadoEm DateTime @default(now())
+
+  clinica  Clinica    @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
+  pacientes Paciente[]
+  comandas  Comanda[]
+
+  @@index([clinicaId])
+  @@unique([clinicaId, cpf])
+  @@unique([clinicaId, cnpj])
+  @@map("clientes")
+}
+
+// ---------------------------------------------------------------------------
+// Paciente (animal)
+// ---------------------------------------------------------------------------
+
+model Paciente {
+  id        String  @id @default(cuid())
+  clinicaId String
+  clienteId String
+
+  nome       String
+  especie    Especie
+  raca       String
+  sexo       Sexo
+  nascimento DateTime?
+
+  peso     Decimal? @db.Decimal(6, 2) // kg, ex: 32.50
+  cor      String?
+  porte    Porte?
+  castrado StatusCastracao @default(NAO_INFORMADO)
+  microchip String?
+  observacoes String? @db.Text // alergias, comportamento, medicação contínua
+
+  criadoEm DateTime @default(now())
+
+  clinica      Clinica       @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  agendamentos Agendamento[]
+  comandas     Comanda[]
+
+  @@index([clinicaId])
+  @@index([clienteId])
+  @@map("pacientes")
+}
+
+// ---------------------------------------------------------------------------
+// Catálogo de produtos e serviços
+// ---------------------------------------------------------------------------
+
+model ItemCatalogo {
+  id        String            @id @default(cuid())
+  clinicaId String
+  nome      String
+  categoria CategoriaCatalogo
+  preco     Decimal           @db.Decimal(10, 2)
+  icone     String?           // emoji usado na UI, ex: "🩺"
+  ativo     Boolean           @default(true)
+  criadoEm  DateTime          @default(now())
+
+  clinica      Clinica        @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
+  itensComanda ComandaItem[]
+  agendamentos Agendamento[]
+
+  @@index([clinicaId])
+  @@map("itens_catalogo")
+}
+
+// ---------------------------------------------------------------------------
+// Agendamento
+// ---------------------------------------------------------------------------
+
+model Agendamento {
+  id        String            @id @default(cuid())
+  clinicaId String
+  pacienteId String
+  veterinarioId String
+  itemCatalogoId String?      // serviço previsto (pode ser nulo/livre)
+
+  dataHoraInicio DateTime
+  duracaoMinutos Int          @default(60)
+  status         StatusAgendamento @default(AGUARDANDO)
+  observacoes    String?      @db.Text
+
+  criadoEm DateTime @default(now())
+
+  clinica      Clinica       @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
+  paciente     Paciente      @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  veterinario  Usuario       @relation("AgendamentoVeterinario", fields: [veterinarioId], references: [id], onDelete: Restrict)
+  itemCatalogo ItemCatalogo? @relation(fields: [itemCatalogoId], references: [id], onDelete: SetNull)
+  comanda      Comanda?
+
+  @@index([clinicaId])
+  @@index([clinicaId, dataHoraInicio])
+  @@index([veterinarioId])
+  @@map("agendamentos")
+}
+
+// ---------------------------------------------------------------------------
+// Comanda (fechamento financeiro de um atendimento)
+// ---------------------------------------------------------------------------
+
+model Comanda {
+  id             String   @id @default(cuid())
+  clinicaId      String
+  agendamentoId  String?  @unique // null = atendimento avulso
+  pacienteId     String?
+  clienteId      String?
+  veterinarioId  String?
+
+  subtotal       Decimal  @db.Decimal(10, 2)
+  desconto       Decimal  @db.Decimal(10, 2) @default(0)
+  total          Decimal  @db.Decimal(10, 2)
+  formaPagamento FormaPagamento
+
+  criadoEm DateTime @default(now())
+
+  clinica     Clinica       @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
+  agendamento Agendamento?  @relation(fields: [agendamentoId], references: [id], onDelete: SetNull)
+  paciente    Paciente?     @relation(fields: [pacienteId], references: [id], onDelete: SetNull)
+  cliente     Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  veterinario Usuario?      @relation("ComandaVeterinario", fields: [veterinarioId], references: [id], onDelete: SetNull)
+  itens       ComandaItem[]
+
+  @@index([clinicaId])
+  @@index([clinicaId, criadoEm])
+  @@map("comandas")
+}
+
+/// Linha de item vendido numa comanda. Guarda uma cópia ("snapshot") do nome e
+/// preço do ItemCatalogo no momento da venda — NUNCA uma referência viva ao
+/// preço atual, para que alterar o catálogo não altere vendas já fechadas.
+model ComandaItem {
+  id             String  @id @default(cuid())
+  comandaId      String
+  itemCatalogoId String?
+
+  nomeSnapshot  String
+  precoSnapshot Decimal @db.Decimal(10, 2)
+  quantidade    Int     @default(1)
+  subtotal      Decimal @db.Decimal(10, 2)
+
+  comanda      Comanda       @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+  itemCatalogo ItemCatalogo? @relation(fields: [itemCatalogoId], references: [id], onDelete: SetNull)
+
+  @@index([comandaId])
+  @@map("comanda_itens")
+}

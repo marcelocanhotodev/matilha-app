@@ -1,0 +1,66 @@
+# ==============================================================================
+# Modo PRODUÇÃO (ou "produção local") — build otimizado (standalone), sem
+# hot reload, sem montar código por volume.
+#
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml run --rm migrate   # aplica migrations
+#   docker compose -f docker-compose.prod.yml up -d app          # sobe o app
+#
+# Por que "migrate" é um serviço separado rodado manualmente (não uma
+# dependência automática do "app"): rodar `prisma migrate deploy` automaticamente
+# toda vez que o container sobe é arriscado em produção (restarts,
+# múltiplas réplicas competindo pela mesma migration). Rodar como um passo
+# explícito e único é o padrão recomendado pelo próprio Prisma.
+#
+# Requer um arquivo .env na raiz com AUTH_SECRET definido de verdade
+# (gere com: openssl rand -base64 32) — nunca use o default de desenvolvimento
+# aqui.
+# ==============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: matilha
+    volumes:
+      - matilha_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Serviço de uso único: roda `prisma migrate deploy` e encerra.
+  # Reaproveita o estágio "builder" do Dockerfile (é o único com o Prisma CLI).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/matilha?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npx prisma migrate deploy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/matilha?schema=public
+      AUTH_SECRET: ${AUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  matilha_pgdata_prod:

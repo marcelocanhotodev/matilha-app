@@ -1,0 +1,57 @@
+# ==============================================================================
+# Modo DESENVOLVIMENTO — Postgres + Next.js com hot reload.
+#
+#   docker compose up
+#
+# O código-fonte é montado por volume (não fica preso dentro da imagem), então
+# editar arquivos no host reflete direto no container, como rodar localmente.
+#
+# Primeira vez (ou depois de mudar o schema.prisma):
+#   docker compose exec app npx prisma migrate dev --name init
+#   docker compose exec app npm run db:seed
+#
+# Para produção, ver docker-compose.prod.yml em vez deste arquivo.
+# ==============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: matilha
+    ports:
+      - "5432:5432"
+    volumes:
+      - matilha_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/matilha?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-dev-secret-nao-usar-em-producao}
+      NEXTAUTH_URL: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/.next
+    # Gera o Prisma Client toda vez que sobe (schema pode ter mudado) e então
+    # inicia o servidor de dev com hot reload.
+    command: sh -c "npx prisma generate && npm run dev"
+
+volumes:
+  matilha_pgdata_dev:
