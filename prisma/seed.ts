@@ -99,6 +99,58 @@ async function main() {
     });
   }
 
+  // Pacientes e agendamentos de hoje — só o suficiente para a fila da tela
+  // de atendimento (capability: atendimento-comanda) ter dado real pra
+  // mostrar. Sem isso a fila fica sempre vazia, já que esta change não
+  // constrói a tela de criação de agendamento (fora de escopo — ver
+  // openspec/changes/.../implementar-atendimento-comanda/proposal.md).
+  const pacientes = [
+    { id: "seed-paciente-rex", clienteId: "seed-cliente-marina-silva", nome: "Rex", especie: "CAO", raca: "SRD", sexo: "MACHO" },
+    { id: "seed-paciente-mimi", clienteId: "seed-cliente-marina-silva", nome: "Mimi", especie: "GATO", raca: "SRD", sexo: "FEMEA" },
+  ] as const;
+
+  for (const dados of pacientes) {
+    const { id, ...resto } = dados;
+    await prisma.paciente.upsert({ where: { id }, update: {}, create: { id, clinicaId: clinica.id, ...resto } });
+  }
+
+  // Horário calculado a partir de "agora" a cada vez que o seed roda — nunca
+  // uma data fixa, senão os agendamentos "de hoje" ficariam no passado.
+  function hojeAs(hora: number, minuto = 0): Date {
+    const agora = new Date();
+    return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), hora, minuto, 0, 0);
+  }
+
+  const agendamentosHoje = [
+    {
+      id: "seed-agendamento-rex-manha",
+      pacienteId: "seed-paciente-rex",
+      itemCatalogoId: "seed-Consulta de rotina",
+      dataHoraInicio: hojeAs(9, 0),
+    },
+    {
+      id: "seed-agendamento-mimi-manha",
+      pacienteId: "seed-paciente-mimi",
+      itemCatalogoId: "seed-Vacinação (V10)",
+      dataHoraInicio: hojeAs(11, 0),
+    },
+    {
+      id: "seed-agendamento-rex-tarde",
+      pacienteId: "seed-paciente-rex",
+      itemCatalogoId: "seed-Banho e tosa",
+      dataHoraInicio: hojeAs(15, 30),
+    },
+  ];
+
+  for (const dados of agendamentosHoje) {
+    const { id, dataHoraInicio, ...resto } = dados;
+    await prisma.agendamento.upsert({
+      where: { id },
+      update: { dataHoraInicio }, // recalcula "hoje" toda vez que o seed roda de novo
+      create: { id, clinicaId: clinica.id, veterinarioId: usuario.id, dataHoraInicio, ...resto },
+    });
+  }
+
   console.log("Seed concluído:", { clinica: clinica.nome, usuario: usuario.email });
 }
 

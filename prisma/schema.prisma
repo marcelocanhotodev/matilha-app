@@ -73,6 +73,18 @@ enum FormaPagamento {
   CARTAO_DEBITO
 }
 
+/// Ciclo de vida da Comanda (capability: atendimento-comanda). Uma comanda
+/// nasce ABERTA no primeiro item adicionado ao carrinho (não só na
+/// finalização — ver openspec/changes/implementar-atendimento-comanda/
+/// design.md, Decisão 2), e FINALIZADA/CANCELADA são terminais: nenhuma
+/// action aceita alterar uma comanda que já saiu de ABERTA (Requirement:
+/// Imutabilidade de comanda finalizada ou cancelada).
+enum StatusComanda {
+  ABERTA
+  FINALIZADA
+  CANCELADA
+}
+
 // ---------------------------------------------------------------------------
 // Identidade / multi-tenancy
 // ---------------------------------------------------------------------------
@@ -274,10 +286,18 @@ model Comanda {
   clienteId      String?
   veterinarioId  String?
 
-  subtotal       Decimal  @db.Decimal(10, 2)
+  subtotal       Decimal  @db.Decimal(10, 2) @default(0)
   desconto       Decimal  @db.Decimal(10, 2) @default(0)
-  total          Decimal  @db.Decimal(10, 2)
-  formaPagamento FormaPagamento
+  total          Decimal  @db.Decimal(10, 2) @default(0)
+  formaPagamento FormaPagamento? // só preenchida ao finalizar
+
+  // Ver enum StatusComanda. motivoCancelamento só é preenchido junto com a
+  // transição para CANCELADA (Requirement: Descartar comanda aberta) — não
+  // existe tela de consulta sobre ele depois de gravado (design.md,
+  // Decisão 8): o campo existe para forçar justificativa no momento do
+  // descarte, não para leitura futura.
+  status              StatusComanda @default(ABERTA)
+  motivoCancelamento  String?       @db.Text
 
   criadoEm DateTime @default(now())
 

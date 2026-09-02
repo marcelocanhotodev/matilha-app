@@ -77,3 +77,50 @@ describe("isolamento entre clínicas (Paciente como recurso de referência)", ()
     expect(resultado?.id).toBe(pacienteBId);
   });
 });
+
+// Repetição do mesmo padrão para Comanda (capability: atendimento-comanda,
+// task 10.2 — ver comentário no topo do arquivo).
+describe("isolamento entre clínicas (Comanda como recurso de referência)", () => {
+  const clinicaAId = "test-isolamento-comanda-clinica-a";
+  const clinicaBId = "test-isolamento-comanda-clinica-b";
+  let comandaBId: string;
+
+  beforeAll(async () => {
+    await prisma.clinica.createMany({
+      data: [
+        { id: clinicaAId, nome: "Test Isolamento Comanda Clínica A" },
+        { id: clinicaBId, nome: "Test Isolamento Comanda Clínica B" },
+      ],
+      skipDuplicates: true,
+    });
+
+    const comandaB = await prisma.comanda.create({
+      data: { clinicaId: clinicaBId },
+    });
+    comandaBId = comandaB.id;
+  });
+
+  afterAll(async () => {
+    await prisma.comandaItem.deleteMany({ where: { comandaId: comandaBId } });
+    await prisma.comanda.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
+    await prisma.clinica.deleteMany({ where: { id: { in: [clinicaAId, clinicaBId] } } });
+  });
+
+  it("usuário com clinicaAtiva=A não encontra Comanda da clínica B por ID direto (-> 404, nunca 403)", async () => {
+    const clinicaAtivaSimulada = clinicaAId;
+
+    const resultado = await prisma.comanda.findFirst({
+      where: { id: comandaBId, clinicaId: clinicaAtivaSimulada },
+    });
+
+    expect(resultado).toBeNull();
+  });
+
+  it("a mesma query, com a clinicaAtiva correta (B), encontra o recurso normalmente", async () => {
+    const resultado = await prisma.comanda.findFirst({
+      where: { id: comandaBId, clinicaId: clinicaBId },
+    });
+
+    expect(resultado?.id).toBe(comandaBId);
+  });
+});
