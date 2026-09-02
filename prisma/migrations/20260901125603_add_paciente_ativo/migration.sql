@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "pacientes" ADD COLUMN     "ativo" BOOLEAN NOT NULL DEFAULT true;

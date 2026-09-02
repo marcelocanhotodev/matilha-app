@@ -193,6 +193,11 @@ model Paciente {
   microchip String?
   observacoes String? @db.Text // alergias, comportamento, medicação contínua
 
+  // Exclusão lógica — nunca exclusão física (mesmo padrão de Cliente.ativo,
+  // ver openspec/changes/implementar-pacientes/design.md, Decisão 1).
+  // Inativar não desvincula nem apaga Agendamento/Comanda associados.
+  ativo Boolean @default(true)
+
   criadoEm DateTime @default(now())
 
   clinica      Clinica       @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
