@@ -1,12 +1,11 @@
-// Layout do painel (capability: autenticacao-multi-clinica) — versão mínima:
-// só o essencial para hospedar o seletor de clínica (task 5.3). A navegação
-// lateral completa do protótipo (Agenda, Pacientes, Clientes...) pertence às
-// telas de cada capability à medida que forem implementadas, não a esta.
+// Layout do painel: resolve sessão/clínica ativa e monta a casca da sidebar
+// (capability: navegacao) em volta das telas de cada capability. Ver
+// openspec/specs/navegacao/spec.md.
 
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { listarClinicasDoUsuario } from "@/lib/clinica-selecao";
-import { ClinicSwitcher } from "./clinic-switcher";
+import { Sidebar } from "./sidebar";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -20,11 +19,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const clinicas = await listarClinicasDoUsuario(session.user.id);
 
   return (
-    <div className="min-h-screen bg-sand-50">
-      <header className="flex items-center justify-end border-b border-sage-300 bg-white px-6 py-3">
-        <ClinicSwitcher clinicas={clinicas} clinicaAtivaId={session.user.clinicaAtivaId} />
-      </header>
-      <div className="p-6">{children}</div>
+    <div className="flex min-h-screen flex-col bg-sand-50 lg:flex-row">
+      <Sidebar clinicas={clinicas} clinicaAtivaId={session.user.clinicaAtivaId} />
+      <main className="min-w-0 flex-1 p-6">{children}</main>
     </div>
   );
 }
