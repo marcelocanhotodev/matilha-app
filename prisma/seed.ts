@@ -48,17 +48,19 @@ async function main() {
   });
 
   const itensCatalogo = [
-    { nome: "Consulta de rotina", categoria: CategoriaCatalogo.SERVICO, preco: 120, icone: "🩺" },
-    { nome: "Vacinação (V10)", categoria: CategoriaCatalogo.SERVICO, preco: 85, icone: "💉" },
-    { nome: "Banho e tosa", categoria: CategoriaCatalogo.SERVICO, preco: 70, icone: "🛁" },
-    { nome: "Ração premium 1kg", categoria: CategoriaCatalogo.PRODUTO, preco: 38, icone: "🥫" },
-    { nome: "Antipulgas (pipeta)", categoria: CategoriaCatalogo.PRODUTO, preco: 55, icone: "🧴" },
+    // duracaoPadraoMinutos: só serviço (capability: agendamento, Requirement:
+    // Criação de agendamento — pré-preenche a duração do agendamento).
+    { nome: "Consulta de rotina", categoria: CategoriaCatalogo.SERVICO, preco: 120, icone: "🩺", duracaoPadraoMinutos: 30 },
+    { nome: "Vacinação (V10)", categoria: CategoriaCatalogo.SERVICO, preco: 85, icone: "💉", duracaoPadraoMinutos: 15 },
+    { nome: "Banho e tosa", categoria: CategoriaCatalogo.SERVICO, preco: 70, icone: "🛁", duracaoPadraoMinutos: 90 },
+    { nome: "Ração premium 1kg", categoria: CategoriaCatalogo.PRODUTO, preco: 38, icone: "🥫", duracaoPadraoMinutos: null },
+    { nome: "Antipulgas (pipeta)", categoria: CategoriaCatalogo.PRODUTO, preco: 55, icone: "🧴", duracaoPadraoMinutos: null },
   ];
 
   for (const item of itensCatalogo) {
     await prisma.itemCatalogo.upsert({
       where: { id: `seed-${item.nome}` },
-      update: {},
+      update: item,
       create: { id: `seed-${item.nome}`, clinicaId: clinica.id, ...item },
     });
   }

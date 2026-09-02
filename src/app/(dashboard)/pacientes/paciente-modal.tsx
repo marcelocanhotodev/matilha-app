@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { criarPaciente, editarPaciente } from "@/lib/actions/paciente";
 import { BREEDS, especies, type EspecieValor } from "@/lib/validators/paciente";
 import { calcularIdadeLabel } from "@/lib/format/idade";
+import { Combobox } from "@/components/combobox";
 import type { ClienteOpcao, PacienteListItem } from "./pacientes-grid";
 
 const ESPECIE_LABEL: Record<EspecieValor, string> = { CAO: "🐶 Cão", GATO: "🐱 Gato", OUTRO: "🐰 Outro" };
@@ -173,13 +174,14 @@ export function PacienteModal({
 
         <form onSubmit={aoSalvar} className="flex flex-col gap-4">
           <Campo label="Tutor">
-            <select required value={form.clienteId} onChange={(e) => set("clienteId", e.target.value)} className="campo-input">
-              {clientesAtivos.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              options={clientesAtivos.map((c) => ({ value: c.id, label: c.nome }))}
+              value={form.clienteId || null}
+              onChange={(valor) => set("clienteId", valor)}
+              placeholder="Selecionar tutor..."
+              buscaPlaceholder="Buscar tutor..."
+              vazioLabel="Nenhum tutor encontrado."
+            />
           </Campo>
 
           <Campo label="Nome do pet">

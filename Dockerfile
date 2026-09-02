@@ -20,6 +20,13 @@
 # ==============================================================================
 
 FROM node:20-alpine AS base
+# Fuso horário da clínica — camada extra de proteção, não a correção
+# principal (essa mora em src/lib/timezone.ts; ver
+# openspec/changes/corrigir-fuso-horario-agenda/design.md, Decisão 4). Sem
+# isso, o container roda em UTC por padrão (Alpine), divergindo do fuso do
+# Brasil.
+RUN apk add --no-cache tzdata
+ENV TZ=America/Sao_Paulo
 
 # ---- deps -------------------------------------------------------------------
 FROM base AS deps

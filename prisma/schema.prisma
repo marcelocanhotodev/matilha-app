@@ -236,6 +236,12 @@ model ItemCatalogo {
   ativo     Boolean           @default(true)
   criadoEm  DateTime          @default(now())
 
+  // Só relevante para categoria SERVICO — pré-preenche (mas nunca trava) a
+  // duração ao criar um Agendamento vinculado a este item (capability:
+  // agendamento, Requirement: Criação de agendamento). Nulo para PRODUTO e
+  // para serviços sem duração configurada.
+  duracaoPadraoMinutos Int?
+
   clinica      Clinica        @relation(fields: [clinicaId], references: [id], onDelete: Restrict)
   itensComanda ComandaItem[]
   agendamentos Agendamento[]

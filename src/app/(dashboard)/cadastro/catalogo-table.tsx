@@ -18,6 +18,10 @@ function precoFormatado(preco: ItemCatalogo["preco"]): string {
   return Number(preco).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function duracaoFormatada(duracaoPadraoMinutos: ItemCatalogo["duracaoPadraoMinutos"]): string {
+  return duracaoPadraoMinutos != null ? `${duracaoPadraoMinutos} min` : "—";
+}
+
 export function CatalogoTable({ itens }: { itens: ItemCatalogo[] }) {
   const router = useRouter();
   const [itemAberto, setItemAberto] = useState<ItemCatalogo | "novo" | null>(null);
@@ -70,13 +74,14 @@ export function CatalogoTable({ itens }: { itens: ItemCatalogo[] }) {
               <th className="px-4 py-2">Nome</th>
               <th className="px-4 py-2">Categoria</th>
               <th className="px-4 py-2">Preço</th>
+              <th className="px-4 py-2">Duração</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody>
             {itens.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-pine-700">
+                <td colSpan={6} className="px-4 py-6 text-center text-pine-700">
                   Nenhum item de catálogo encontrado.
                 </td>
               </tr>
@@ -90,6 +95,7 @@ export function CatalogoTable({ itens }: { itens: ItemCatalogo[] }) {
                   </td>
                   <td className="px-4 py-2 text-pine-800">{CATEGORIA_LABEL[item.categoria] ?? item.categoria}</td>
                   <td className="px-4 py-2 text-pine-800">{precoFormatado(item.preco)}</td>
+                  <td className="px-4 py-2 text-pine-800">{duracaoFormatada(item.duracaoPadraoMinutos)}</td>
                   <td className="px-4 py-2">
                     <div className="flex justify-end gap-2">
                       <button

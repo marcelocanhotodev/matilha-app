@@ -19,17 +19,19 @@ interface FormState {
   categoria: CategoriaValor;
   preco: string;
   icone: string;
+  duracaoPadraoMinutos: string;
 }
 
 function estadoInicial(item: ItemCatalogo | null): FormState {
   if (!item) {
-    return { nome: "", categoria: "SERVICO", preco: "", icone: "🩺" };
+    return { nome: "", categoria: "SERVICO", preco: "", icone: "🩺", duracaoPadraoMinutos: "" };
   }
   return {
     nome: item.nome,
     categoria: item.categoria as CategoriaValor,
     preco: String(item.preco),
     icone: item.icone ?? "",
+    duracaoPadraoMinutos: item.duracaoPadraoMinutos != null ? String(item.duracaoPadraoMinutos) : "",
   };
 }
 
@@ -60,6 +62,7 @@ export function ItemCatalogoModal({
       categoria: form.categoria,
       preco: form.preco,
       icone: form.icone || undefined,
+      duracaoPadraoMinutos: form.duracaoPadraoMinutos || undefined,
     };
 
     const resultado = item ? await editarItemCatalogo(item.id, payload) : await criarItemCatalogo(payload);
@@ -100,7 +103,12 @@ export function ItemCatalogoModal({
             <Campo label="Categoria">
               <select
                 value={form.categoria}
-                onChange={(e) => set("categoria", e.target.value as CategoriaValor)}
+                onChange={(e) => {
+                  const categoria = e.target.value as CategoriaValor;
+                  // Duração só se aplica a serviço — trocar para produto
+                  // limpa o valor, mesmo que já tivesse sido preenchido.
+                  setForm((f) => ({ ...f, categoria, duracaoPadraoMinutos: categoria === "SERVICO" ? f.duracaoPadraoMinutos : "" }));
+                }}
                 className="campo-input"
               >
                 {categorias.map((c) => (
@@ -124,15 +132,30 @@ export function ItemCatalogoModal({
             </Campo>
           </div>
 
-          <Campo label="Ícone (emoji)">
-            <input
-              type="text"
-              placeholder="🩺"
-              value={form.icone}
-              onChange={(e) => set("icone", e.target.value)}
-              className="campo-input"
-            />
-          </Campo>
+          <div className="flex gap-3">
+            <Campo label="Ícone (emoji)">
+              <input
+                type="text"
+                placeholder="🩺"
+                value={form.icone}
+                onChange={(e) => set("icone", e.target.value)}
+                className="campo-input"
+              />
+            </Campo>
+            {form.categoria === "SERVICO" && (
+              <Campo label="Duração padrão (min)">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Ex: 30"
+                  value={form.duracaoPadraoMinutos}
+                  onChange={(e) => set("duracaoPadraoMinutos", e.target.value)}
+                  className="campo-input"
+                />
+              </Campo>
+            )}
+          </div>
 
           {erro && <p className="text-sm text-red-700">{erro}</p>}
 

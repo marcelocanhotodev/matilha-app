@@ -41,6 +41,9 @@ function paraDadosPrisma(dados: ItemCatalogoInput) {
     categoria: dados.categoria,
     preco: dados.preco,
     icone: dados.icone ?? null,
+    // Já normalizado pelo schema (itemCatalogoInputSchema): nunca definido
+    // fora de categoria SERVICO, mesmo que o client tenha enviado algo.
+    duracaoPadraoMinutos: dados.duracaoPadraoMinutos ?? null,
   };
 }
 

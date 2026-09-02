@@ -58,6 +58,10 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/matilha?schema=public
       AUTH_SECRET: ${AUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      # Fuso horário da clínica — já fixado via ENV no Dockerfile, mas
+      # redundante aqui como documentação/override explícito (ver
+      # openspec/changes/corrigir-fuso-horario-agenda/design.md, Decisão 4).
+      TZ: America/Sao_Paulo
     depends_on:
       db:
         condition: service_healthy

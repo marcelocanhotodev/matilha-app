@@ -56,4 +56,41 @@ describe("itemCatalogoInputSchema", () => {
       expect(parse.success).toBe(true);
     }
   });
+
+  it('Scenario "Duração padrão de um serviço" — grava a duração informada para serviço', () => {
+    const parse = itemCatalogoInputSchema.safeParse({ ...payloadValido, duracaoPadraoMinutos: 30 });
+    expect(parse.success).toBe(true);
+    if (parse.success) expect(parse.data.duracaoPadraoMinutos).toBe(30);
+  });
+
+  it('Scenario "Duração não se aplica a produto" — duração enviada é ignorada para produto', () => {
+    const parse = itemCatalogoInputSchema.safeParse({
+      ...payloadValido,
+      categoria: "PRODUTO",
+      duracaoPadraoMinutos: 30,
+    });
+    expect(parse.success).toBe(true);
+    if (parse.success) expect(parse.data.duracaoPadraoMinutos).toBeUndefined();
+  });
+
+  it('Scenario "Duração padrão inválida" — zero é rejeitado', () => {
+    const parse = itemCatalogoInputSchema.safeParse({ ...payloadValido, duracaoPadraoMinutos: 0 });
+    expect(parse.success).toBe(false);
+  });
+
+  it('Scenario "Duração padrão inválida" — negativo é rejeitado', () => {
+    const parse = itemCatalogoInputSchema.safeParse({ ...payloadValido, duracaoPadraoMinutos: -10 });
+    expect(parse.success).toBe(false);
+  });
+
+  it('Scenario "Duração padrão inválida" — não numérico é rejeitado', () => {
+    const parse = itemCatalogoInputSchema.safeParse({ ...payloadValido, duracaoPadraoMinutos: "abc" });
+    expect(parse.success).toBe(false);
+  });
+
+  it("duração ausente (string vazia) é válida — campo opcional", () => {
+    const parse = itemCatalogoInputSchema.safeParse({ ...payloadValido, duracaoPadraoMinutos: "" });
+    expect(parse.success).toBe(true);
+    if (parse.success) expect(parse.data.duracaoPadraoMinutos).toBeUndefined();
+  });
 });

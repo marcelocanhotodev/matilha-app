@@ -171,6 +171,30 @@ describe("Server Actions de ItemCatalogo", () => {
     expect(aindaAtivo?.ativo).toBe(true); // não foi alterado
   });
 
+  it("criarItemCatalogo grava duracaoPadraoMinutos para serviço, e nunca para produto", async () => {
+    clinicaAtivaMock.current = clinicaAId;
+
+    const servico = await criarItemCatalogo({
+      nome: "Consulta com duração",
+      categoria: "SERVICO",
+      preco: 100,
+      duracaoPadraoMinutos: 30,
+    });
+    expect(servico.ok).toBe(true);
+    const itemServico = await prisma.itemCatalogo.findUnique({ where: { id: servico.itemCatalogoId } });
+    expect(itemServico?.duracaoPadraoMinutos).toBe(30);
+
+    const produto = await criarItemCatalogo({
+      nome: "Produto com duração enviada por engano",
+      categoria: "PRODUTO",
+      preco: 20,
+      duracaoPadraoMinutos: 30,
+    });
+    expect(produto.ok).toBe(true);
+    const itemProduto = await prisma.itemCatalogo.findUnique({ where: { id: produto.itemCatalogoId } });
+    expect(itemProduto?.duracaoPadraoMinutos).toBeNull();
+  });
+
   it("editarItemCatalogo não edita item de outra clínica, mesmo passando o ID direto (isolamento, task 2.1)", async () => {
     clinicaAtivaMock.current = clinicaBId;
     const itemDaClinicaB = await prisma.itemCatalogo.create({
