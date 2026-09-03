@@ -57,5 +57,25 @@ services:
     # inicia o servidor de dev com hot reload.
     command: sh -c "npx prisma generate && npm run dev"
 
+  # Interface web para consultar/editar os dados do Postgres.
+  # Acesse em http://localhost:5050 (login: admin@admin.com / admin).
+  # Ao adicionar um servidor lá dentro, use host "db", porta 5432,
+  # usuário "postgres", senha "postgres", database "matilha".
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - matilha_pgadmin_dev:/var/lib/pgadmin
+
 volumes:
   matilha_pgdata_dev:
+  matilha_pgadmin_dev:
