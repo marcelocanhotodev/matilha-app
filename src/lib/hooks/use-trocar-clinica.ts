@@ -1,8 +1,12 @@
 "use client";
 
-// Hook compartilhado entre a tela de seleção de clínica e o seletor do
-// painel (capability: autenticacao-multi-clinica) — evita duplicar o fluxo
-// de validação (Server Action) + refresh de sessão (design.md, Decisão 3).
+// Hook usado pela tela de seleção de clínica (`/selecionar-clinica`,
+// capability: autenticacao-multi-clinica) — encapsula o fluxo de validação
+// (Server Action) + refresh de sessão (design.md, Decisão 3). Não usado
+// dentro do painel: trocar a clínica ativa de uma sessão já autenticada
+// exige logout (ver Requirement: Troca de clínica exige logout e novo
+// login) — este hook só cobre a escolha inicial, quando a sessão ainda não
+// tem `clinicaAtivaId`.
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";

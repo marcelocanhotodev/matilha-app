@@ -1,14 +1,19 @@
 // Sidebar do painel (capability: navegacao). Server Component: recebe as
 // clínicas do usuário já buscadas pelo layout e monta a casca visual — marca
 // "Matilha", <SidebarNav> (estado de rota ativa, client) e o
-// <ClinicSwitcher variant="sidebar"> no rodapé. Reproduz `.sidebar` do
-// protótipo (openspec/reference/prototipo.html) com Tailwind; comportamento
-// responsivo (coluna fixa ≥1024px / barra horizontal abaixo disso) segue
-// openspec/specs/navegacao/spec.md — Requirement: Navegação adaptada a telas
-// estreitas (ver design.md, Decisão de breakpoint, para o porquê de 1024px
-// em vez dos 980px do protótipo).
+// <SidebarFooter> (cartão da clínica ativa + logout) no rodapé. Reproduz
+// `.sidebar` do protótipo (openspec/reference/prototipo.html) com Tailwind;
+// comportamento responsivo (coluna fixa ≥1024px / barra horizontal abaixo
+// disso) segue openspec/specs/navegacao/spec.md — Requirement: Navegação
+// adaptada a telas estreitas (ver design.md, Decisão de breakpoint, para o
+// porquê de 1024px em vez dos 980px do protótipo).
+//
+// Troca de clínica pelo painel foi removida (capability: autenticacao-
+// multi-clinica — Requirement: Troca de clínica exige logout e novo login):
+// a Sidebar só resolve a clínica ativa (dentre as `clinicas` vinculadas)
+// pra exibição, nunca pra troca.
 
-import { ClinicSwitcher } from "./clinic-switcher";
+import { SidebarFooter } from "./sidebar-footer";
 import { SidebarNav } from "./sidebar-nav";
 import type { ClinicaDoUsuario } from "@/lib/clinica-selecao";
 
@@ -19,6 +24,8 @@ export function Sidebar({
   clinicas: ClinicaDoUsuario[];
   clinicaAtivaId: string;
 }) {
+  const clinicaAtiva = clinicas.find((c) => c.clinicaId === clinicaAtivaId);
+
   return (
     <aside
       className="flex items-center gap-3 overflow-x-auto bg-gradient-to-b from-pine-800 to-pine-900 px-4 py-3 text-sand-100
@@ -39,9 +46,11 @@ export function Sidebar({
 
       <SidebarNav />
 
-      <div className="mt-auto hidden border-t border-white/10 pt-[18px] lg:block">
-        <ClinicSwitcher clinicas={clinicas} clinicaAtivaId={clinicaAtivaId} variant="sidebar" />
-      </div>
+      {clinicaAtiva && (
+        <div className="mt-auto hidden border-t border-white/10 pt-[18px] lg:block">
+          <SidebarFooter clinicaNome={clinicaAtiva.clinicaNome} papel={clinicaAtiva.papel} />
+        </div>
+      )}
     </aside>
   );
 }
