@@ -153,7 +153,156 @@ async function main() {
     });
   }
 
-  console.log("Seed concluído:", { clinica: clinica.nome, usuario: usuario.email });
+  // Segunda clínica — permite explorar troca de clínica pela UI com dados
+  // reais dos dois lados desde o primeiro `npm run db:seed` (ver
+  // openspec/changes/testar-fluxo-multiclinica/proposal.md). Volume mínimo
+  // de propósito: só o suficiente pra aparecer em cada tela, não pra
+  // estressar performance (design.md, Decisão 3).
+  const clinicaB = await prisma.clinica.upsert({
+    where: { id: "clinica-seed-pata-feliz" },
+    update: {},
+    create: {
+      id: "clinica-seed-pata-feliz",
+      nome: "Clínica Pata Feliz",
+    },
+  });
+
+  const usuarioB = await prisma.usuario.upsert({
+    where: { email: "joao@patafeliz.com.br" },
+    update: {},
+    create: {
+      nome: "João Pedro",
+      email: "joao@patafeliz.com.br",
+      senhaHash,
+    },
+  });
+
+  await prisma.usuarioClinica.upsert({
+    where: { usuarioId_clinicaId: { usuarioId: usuarioB.id, clinicaId: clinicaB.id } },
+    update: {},
+    create: {
+      usuarioId: usuarioB.id,
+      clinicaId: clinicaB.id,
+      papel: PapelUsuario.ADMIN,
+    },
+  });
+
+  // Ana também tem vínculo com a segunda clínica — usuário com acesso a
+  // mais de uma clínica (Requirement "Uma conta, várias clínicas"), pra
+  // poder testar a tela `/selecionar-clinica` e a troca de clínica pela
+  // UI sem precisar de duas contas separadas.
+  await prisma.usuarioClinica.upsert({
+    where: { usuarioId_clinicaId: { usuarioId: usuario.id, clinicaId: clinicaB.id } },
+    update: {},
+    create: {
+      usuarioId: usuario.id,
+      clinicaId: clinicaB.id,
+      papel: PapelUsuario.ADMIN,
+    },
+  });
+
+  const itemCatalogoB = await prisma.itemCatalogo.upsert({
+    where: { id: "seed-b-consulta-de-rotina" },
+    update: {},
+    create: {
+      id: "seed-b-consulta-de-rotina",
+      clinicaId: clinicaB.id,
+      nome: "Consulta de rotina",
+      categoria: CategoriaCatalogo.SERVICO,
+      preco: 130,
+      icone: "🩺",
+      duracaoPadraoMinutos: 30,
+    },
+  });
+
+  const clienteB = await prisma.cliente.upsert({
+    where: { id: "seed-b-cliente-julia-santos" },
+    update: {},
+    create: {
+      id: "seed-b-cliente-julia-santos",
+      clinicaId: clinicaB.id,
+      tipo: TipoPessoa.FISICA,
+      nome: "Júlia Santos",
+      cpf: "72935184600", // normalizado, sem máscara
+      nascimento: new Date("1988-07-23"),
+      email: "julia.santos@gmail.com",
+      celular: "14997765432", // normalizado, sem máscara
+      cep: "18607070",
+      logradouro: "Avenida Dom Lúcio",
+      numero: "812",
+      bairro: "Jardim Paraíso",
+      cidade: "Botucatu",
+      uf: "SP",
+    },
+  });
+
+  const pacienteB = await prisma.paciente.upsert({
+    where: { id: "seed-b-paciente-nina" },
+    update: {},
+    create: {
+      id: "seed-b-paciente-nina",
+      clinicaId: clinicaB.id,
+      clienteId: clienteB.id,
+      nome: "Nina",
+      especie: "GATO",
+      raca: "Siamês",
+      sexo: "FEMEA",
+    },
+  });
+
+  // status EM_ATENDIMENTO (não AGUARDANDO): já existe uma comanda aberta
+  // vinculada a este agendamento logo abaixo — pela Requirement "Ciclo de
+  // status do agendamento", uma Comanda só existe depois dessa transição.
+  const agendamentoBId = "seed-b-agendamento-nina-manha";
+  await prisma.agendamento.upsert({
+    where: { id: agendamentoBId },
+    update: { dataHoraInicio: hojeAs(10, 0), status: "EM_ATENDIMENTO" }, // recalcula "hoje" toda vez que o seed roda de novo
+    create: {
+      id: agendamentoBId,
+      clinicaId: clinicaB.id,
+      pacienteId: pacienteB.id,
+      veterinarioId: usuarioB.id,
+      itemCatalogoId: itemCatalogoB.id,
+      dataHoraInicio: hojeAs(10, 0),
+      status: "EM_ATENDIMENTO",
+    },
+  });
+
+  const comandaB = await prisma.comanda.upsert({
+    where: { agendamentoId: agendamentoBId },
+    update: {},
+    create: {
+      id: "seed-b-comanda-nina",
+      clinicaId: clinicaB.id,
+      agendamentoId: agendamentoBId,
+      pacienteId: pacienteB.id,
+      clienteId: clienteB.id,
+      veterinarioId: usuarioB.id,
+      subtotal: itemCatalogoB.preco,
+      total: itemCatalogoB.preco,
+    },
+  });
+
+  await prisma.comandaItem.upsert({
+    where: { id: "seed-b-comanda-item-consulta" },
+    update: {},
+    create: {
+      id: "seed-b-comanda-item-consulta",
+      comandaId: comandaB.id,
+      itemCatalogoId: itemCatalogoB.id,
+      nomeSnapshot: itemCatalogoB.nome,
+      precoSnapshot: itemCatalogoB.preco,
+      quantidade: 1,
+      subtotal: itemCatalogoB.preco,
+    },
+  });
+
+  console.log("Seed concluído:", {
+    clinica: clinica.nome,
+    usuario: usuario.email,
+    clinicaB: clinicaB.nome,
+    usuarioB: usuarioB.email,
+  });
 }
 
 main()
