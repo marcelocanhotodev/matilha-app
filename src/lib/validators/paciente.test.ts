@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { pacienteInputSchema, BREEDS, especies } from "@/lib/validators/paciente";
 
 const payloadValido = {
-  clienteId: "cliente-1",
+  clienteId: 1,
   nome: "Thor",
   especie: "CAO" as const,
   raca: "Golden Retriever",

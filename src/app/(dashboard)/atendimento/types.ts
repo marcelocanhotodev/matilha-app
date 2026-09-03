@@ -13,5 +13,5 @@ export type AgendamentoFila = Agendamento & {
 };
 
 export type ComandaForaDaFila = ComandaComItens & {
-  agendamento: { id: string; paciente: { nome: string } } | null;
+  agendamento: { id: number; paciente: { nome: string } } | null;
 };

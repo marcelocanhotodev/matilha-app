@@ -49,7 +49,10 @@ export const BREEDS: Record<EspecieValor, string[]> = {
 };
 
 export const pacienteInputSchema = z.object({
-  clienteId: z.string({ required_error: "Tutor é obrigatório." }).trim().min(1, "Tutor é obrigatório."),
+  clienteId: z.coerce
+    .number({ required_error: "Tutor é obrigatório.", invalid_type_error: "Tutor é obrigatório." })
+    .int()
+    .positive("Tutor é obrigatório."),
   nome: z.string({ required_error: "Nome do pet é obrigatório." }).trim().min(1, "Nome do pet é obrigatório."),
   especie: z.enum(especies, { required_error: "Espécie é obrigatória." }),
   raca: z.string({ required_error: "Raça é obrigatória." }).trim().min(1, "Raça é obrigatória."),

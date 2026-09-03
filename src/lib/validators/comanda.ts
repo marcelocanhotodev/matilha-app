@@ -14,9 +14,10 @@ export const tiposDesconto = ["PERCENTUAL", "FIXO"] as const;
 export type TipoDescontoValor = (typeof tiposDesconto)[number];
 
 export const itemCarrinhoInputSchema = z.object({
-  itemCatalogoId: z
-    .string({ required_error: "Item de catálogo é obrigatório." })
-    .min(1, "Item de catálogo é obrigatório."),
+  itemCatalogoId: z.coerce
+    .number({ required_error: "Item de catálogo é obrigatório.", invalid_type_error: "Item de catálogo é obrigatório." })
+    .int()
+    .positive("Item de catálogo é obrigatório."),
   quantidade: z.coerce
     .number({ invalid_type_error: "Quantidade deve ser um número." })
     .int("Quantidade deve ser um número inteiro.")

@@ -13,6 +13,12 @@
 import { prisma } from "@/lib/prisma";
 import type { PapelUsuario } from "@prisma/client";
 
+// A sessão/JWT guarda usuarioId/clinicaId como string (padrão Auth.js — ver
+// src/types/next-auth.d.ts) mas as PKs de Usuario/Clinica são Int. As três
+// funções abaixo recebem string (vindas direto da sessão) e convertem com
+// Number(...) só na hora de montar o `where` do Prisma — nenhum outro lugar
+// do fluxo de auth/sessão precisa saber que o banco usa Int.
+
 export interface ClinicaDoUsuario {
   clinicaId: string;
   clinicaNome: string;
@@ -22,12 +28,12 @@ export interface ClinicaDoUsuario {
 /** Lista as clínicas vinculadas a um usuário, para a tela de seleção. */
 export async function listarClinicasDoUsuario(usuarioId: string): Promise<ClinicaDoUsuario[]> {
   const vinculos = await prisma.usuarioClinica.findMany({
-    where: { usuarioId },
+    where: { usuarioId: Number(usuarioId) },
     include: { clinica: { select: { nome: true } } },
   });
 
   return vinculos.map((v) => ({
-    clinicaId: v.clinicaId,
+    clinicaId: String(v.clinicaId),
     clinicaNome: v.clinica.nome,
     papel: v.papel,
   }));
@@ -40,11 +46,11 @@ export async function listarClinicasDoUsuario(usuarioId: string): Promise<Clinic
  */
 export async function resolverClinicaAtivaNoLogin(usuarioId: string): Promise<string | undefined> {
   const vinculos = await prisma.usuarioClinica.findMany({
-    where: { usuarioId },
+    where: { usuarioId: Number(usuarioId) },
     select: { clinicaId: true },
   });
 
-  return vinculos.length === 1 ? vinculos[0].clinicaId : undefined;
+  return vinculos.length === 1 ? String(vinculos[0].clinicaId) : undefined;
 }
 
 /**
@@ -57,7 +63,9 @@ export async function usuarioTemVinculoComClinica(
   clinicaId: string
 ): Promise<boolean> {
   const vinculo = await prisma.usuarioClinica.findUnique({
-    where: { usuarioId_clinicaId: { usuarioId, clinicaId } },
+    where: {
+      usuarioId_clinicaId: { usuarioId: Number(usuarioId), clinicaId: Number(clinicaId) },
+    },
   });
 
   return vinculo !== null;

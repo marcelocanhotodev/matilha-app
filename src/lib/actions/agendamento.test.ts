@@ -24,12 +24,13 @@ vi.mock("@/lib/auth", () => ({
 const { selecionarAgendamento, criarAgendamento } = await import("@/lib/actions/agendamento");
 
 describe("selecionarAgendamento", () => {
-  const clinicaId = "test-agendamento-action-clinica-a";
-  let veterinarioId: string;
-  let pacienteId: string;
+  let clinicaId: number;
+  let veterinarioId: number;
+  let pacienteId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.create({ data: { id: clinicaId, nome: "Test Agendamento Action Clínica A" } });
+    const clinica = await prisma.clinica.create({ data: { nome: "Test Agendamento Action Clínica A" } });
+    clinicaId = clinica.id;
 
     const veterinario = await prisma.usuario.create({
       data: { nome: "Vet Teste Agendamento", email: `vet-agendamento-${Date.now()}@teste.matilha`, senhaHash: "x" },
@@ -44,7 +45,7 @@ describe("selecionarAgendamento", () => {
     });
     pacienteId = paciente.id;
 
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
   });
 
   afterAll(async () => {
@@ -92,8 +93,8 @@ describe("selecionarAgendamento", () => {
   });
 
   it("não transiciona agendamento de outra clínica, mesmo passando o ID direto (isolamento)", async () => {
-    const outraClinicaId = "test-agendamento-action-clinica-b";
-    await prisma.clinica.create({ data: { id: outraClinicaId, nome: "Test Agendamento Action Clínica B" } });
+    const outraClinica = await prisma.clinica.create({ data: { nome: "Test Agendamento Action Clínica B" } });
+    const outraClinicaId = outraClinica.id;
     const clienteOutra = await prisma.cliente.create({
       data: { clinicaId: outraClinicaId, tipo: "FISICA", nome: "Tutor B", email: `tutor-b-${Date.now()}@teste.matilha` },
     });
@@ -125,12 +126,13 @@ describe("selecionarAgendamento", () => {
 });
 
 describe("criarAgendamento", () => {
-  const clinicaId = "test-criar-agendamento-clinica-a";
-  let veterinarioId: string;
-  let pacienteId: string;
+  let clinicaId: number;
+  let veterinarioId: number;
+  let pacienteId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.create({ data: { id: clinicaId, nome: "Test Criar Agendamento Clínica A" } });
+    const clinica = await prisma.clinica.create({ data: { nome: "Test Criar Agendamento Clínica A" } });
+    clinicaId = clinica.id;
 
     const veterinario = await prisma.usuario.create({
       data: { nome: "Vet Teste Criar Agendamento", email: `vet-criar-agendamento-${Date.now()}@teste.matilha`, senhaHash: "x" },
@@ -146,7 +148,7 @@ describe("criarAgendamento", () => {
     });
     pacienteId = paciente.id;
 
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
   });
 
   afterAll(async () => {
@@ -159,7 +161,7 @@ describe("criarAgendamento", () => {
   });
 
   it("cria um agendamento sem conflito", async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const resultado = await criarAgendamento({
       pacienteId,
@@ -175,7 +177,7 @@ describe("criarAgendamento", () => {
   });
 
   it('Scenario "Conflito de horário para o mesmo profissional" — alerta sem criar', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     await criarAgendamento({
       pacienteId,
@@ -209,7 +211,7 @@ describe("criarAgendamento", () => {
   });
 
   it('Scenario "Confirmar mesmo com conflito" — segunda chamada com ignorarConflito cria normalmente', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     await criarAgendamento({
       pacienteId,
@@ -242,7 +244,7 @@ describe("criarAgendamento", () => {
   });
 
   it('Scenario "Agendamento cancelado não conta como conflito"', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const cancelado = await criarAgendamento({
       pacienteId,
@@ -266,7 +268,7 @@ describe("criarAgendamento", () => {
   });
 
   it("não cria agendamento para paciente ou veterinário de outra clínica", async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const resultado = await criarAgendamento({
       pacienteId: "id-inexistente",
@@ -294,7 +296,7 @@ describe("criarAgendamento", () => {
     });
 
     it("agendamento criado para 09:00 no fuso da clínica fica salvo no instante correto, mesmo com o processo em UTC", async () => {
-      clinicaAtivaMock.current = clinicaId;
+      clinicaAtivaMock.current = String(clinicaId);
 
       const resultado = await criarAgendamento({
         pacienteId,
@@ -320,7 +322,7 @@ describe("criarAgendamento", () => {
     });
 
     it("checagem de conflito continua correta com o processo em UTC", async () => {
-      clinicaAtivaMock.current = clinicaId;
+      clinicaAtivaMock.current = String(clinicaId);
 
       await criarAgendamento({
         pacienteId,

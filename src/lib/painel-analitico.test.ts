@@ -15,22 +15,19 @@ import {
 import { adicionarDias, inicioDoDiaClinica, paraDiaCalendario } from "@/lib/timezone";
 
 describe("painel-analitico", () => {
-  const clinicaId = "test-painel-analitico-clinica-a";
-  const clinicaOutraId = "test-painel-analitico-clinica-b";
-  let clienteAId: string;
-  let clienteBId: string;
-  let itemXId: string;
-  let itemYId: string;
-  let itemZId: string;
+  let clinicaId: number;
+  let clinicaOutraId: number;
+  let clienteAId: number;
+  let clienteBId: number;
+  let itemXId: number;
+  let itemYId: number;
+  let itemZId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaId, nome: "Test Painel Analítico Clínica A" },
-        { id: clinicaOutraId, nome: "Test Painel Analítico Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinica = await prisma.clinica.create({ data: { nome: "Test Painel Analítico Clínica A" } });
+    const clinicaOutra = await prisma.clinica.create({ data: { nome: "Test Painel Analítico Clínica B" } });
+    clinicaId = clinica.id;
+    clinicaOutraId = clinicaOutra.id;
 
     const clienteA = await prisma.cliente.create({
       data: { clinicaId, tipo: "FISICA", nome: "Zelda Tutora", email: `zelda-${Date.now()}@teste.matilha` },
@@ -154,7 +151,7 @@ describe("painel-analitico", () => {
     });
 
     it("nenhuma venda ainda -> lista vazia", async () => {
-      const resultado = await itensMaisVendidos("clinica-sem-nenhum-dado");
+      const resultado = await itensMaisVendidos(-1); // id de clínica que nunca existe
       expect(resultado).toEqual([]);
     });
 
@@ -165,7 +162,7 @@ describe("painel-analitico", () => {
       expect(zebraA?.quantidade).toBe(3); // não 53 (3 da clínica A + 50 da clínica B)
 
       const resultadoOutra = await itensMaisVendidos(clinicaOutraId);
-      expect(resultadoOutra).toEqual([{ itemCatalogoId: expect.any(String), nome: "Zebra Item", quantidade: 50 }]);
+      expect(resultadoOutra).toEqual([{ itemCatalogoId: expect.any(Number), nome: "Zebra Item", quantidade: 50 }]);
     });
   });
 
@@ -199,7 +196,7 @@ describe("painel-analitico", () => {
     });
 
     it("nenhuma venda finalizada -> lista vazia", async () => {
-      const resultado = await faturamentoPorFormaPagamento("clinica-sem-nenhum-dado");
+      const resultado = await faturamentoPorFormaPagamento(-1); // id de clínica que nunca existe
       expect(resultado).toEqual([]);
     });
   });
@@ -222,7 +219,7 @@ describe("painel-analitico", () => {
     });
 
     it("nenhuma venda no período -> 14 dias, todos zerados", async () => {
-      const resultado = await faturamentoPorDia("clinica-sem-nenhum-dado");
+      const resultado = await faturamentoPorDia(-1); // id de clínica que nunca existe
       expect(resultado).toHaveLength(14);
       expect(resultado.every((d) => d.total === 0)).toBe(true);
     });

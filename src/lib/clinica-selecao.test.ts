@@ -6,6 +6,11 @@
 // (`docker compose up` + `npx prisma migrate dev`). Não há banco de teste
 // separado neste projeto — os testes criam e limpam suas próprias linhas no
 // mesmo DATABASE_URL do dev, no mesmo padrão de prisma/seed.ts.
+//
+// IDs são Int autoincrement — os testes nunca escolhem um id na mão, sempre
+// capturam o `.id` retornado pelo `create` e convertem pra string ao chamar
+// as funções de src/lib/clinica-selecao.ts (a API pública delas continua
+// string, pois é o que a sessão/JWT do Auth.js guarda — ver tenant.ts).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import bcrypt from "bcryptjs";
@@ -17,21 +22,19 @@ import {
 } from "@/lib/clinica-selecao";
 
 describe("clinica-selecao", () => {
-  const clinicaUnicaId = "test-clinica-selecao-unica";
-  const clinicaExtraId = "test-clinica-selecao-extra";
-  const clinicaSemVinculoId = "test-clinica-selecao-sem-vinculo";
-  let usuarioUmVinculoId: string;
-  let usuarioDoisVinculosId: string;
+  let clinicaUnicaId: number;
+  let clinicaExtraId: number;
+  let clinicaSemVinculoId: number;
+  let usuarioUmVinculoId: number;
+  let usuarioDoisVinculosId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaUnicaId, nome: "Test Clínica Única" },
-        { id: clinicaExtraId, nome: "Test Clínica Extra" },
-        { id: clinicaSemVinculoId, nome: "Test Clínica Sem Vínculo" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaUnica = await prisma.clinica.create({ data: { nome: "Test Clínica Única" } });
+    const clinicaExtra = await prisma.clinica.create({ data: { nome: "Test Clínica Extra" } });
+    const clinicaSemVinculo = await prisma.clinica.create({ data: { nome: "Test Clínica Sem Vínculo" } });
+    clinicaUnicaId = clinicaUnica.id;
+    clinicaExtraId = clinicaExtra.id;
+    clinicaSemVinculoId = clinicaSemVinculo.id;
 
     const senhaHash = await bcrypt.hash("senha-teste", 10);
 
@@ -68,28 +71,28 @@ describe("clinica-selecao", () => {
   });
 
   it("resolve a clinicaAtiva automaticamente quando o usuário tem 1 único vínculo (task 2.3)", async () => {
-    const clinicaId = await resolverClinicaAtivaNoLogin(usuarioUmVinculoId);
-    expect(clinicaId).toBe(clinicaUnicaId);
+    const clinicaId = await resolverClinicaAtivaNoLogin(String(usuarioUmVinculoId));
+    expect(clinicaId).toBe(String(clinicaUnicaId));
   });
 
   it("deixa a clinicaAtiva vazia quando o usuário tem mais de 1 vínculo", async () => {
-    const clinicaId = await resolverClinicaAtivaNoLogin(usuarioDoisVinculosId);
+    const clinicaId = await resolverClinicaAtivaNoLogin(String(usuarioDoisVinculosId));
     expect(clinicaId).toBeUndefined();
   });
 
   it("lista as clínicas do usuário com o papel em cada uma", async () => {
-    const clinicas = await listarClinicasDoUsuario(usuarioDoisVinculosId);
+    const clinicas = await listarClinicasDoUsuario(String(usuarioDoisVinculosId));
     expect(clinicas).toHaveLength(2);
-    expect(clinicas.find((c) => c.clinicaId === clinicaExtraId)?.papel).toBe("RECEPCAO");
+    expect(clinicas.find((c) => c.clinicaId === String(clinicaExtraId))?.papel).toBe("RECEPCAO");
   });
 
   it("confirma vínculo existente", async () => {
-    const temVinculo = await usuarioTemVinculoComClinica(usuarioDoisVinculosId, clinicaExtraId);
+    const temVinculo = await usuarioTemVinculoComClinica(String(usuarioDoisVinculosId), String(clinicaExtraId));
     expect(temVinculo).toBe(true);
   });
 
   it("rejeita clinicaId sem vínculo — candidata a troca inválida (task 2.4)", async () => {
-    const temVinculo = await usuarioTemVinculoComClinica(usuarioDoisVinculosId, clinicaSemVinculoId);
+    const temVinculo = await usuarioTemVinculoComClinica(String(usuarioDoisVinculosId), String(clinicaSemVinculoId));
     expect(temVinculo).toBe(false);
   });
 });

@@ -8,18 +8,15 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 describe("isolamento entre clínicas (Paciente como recurso)", () => {
-  const clinicaAId = "test-isolamento-paciente-clinica-a";
-  const clinicaBId = "test-isolamento-paciente-clinica-b";
-  let pacienteBId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let pacienteBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Isolamento Paciente Clínica A" },
-        { id: clinicaBId, nome: "Test Isolamento Paciente Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Isolamento Paciente Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Isolamento Paciente Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const clienteB = await prisma.cliente.create({
       data: {

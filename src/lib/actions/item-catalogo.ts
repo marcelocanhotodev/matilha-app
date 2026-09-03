@@ -22,7 +22,7 @@ import { itemCatalogoInputSchema, type ItemCatalogoInput } from "@/lib/validator
 export interface SalvarItemCatalogoResultado {
   ok: boolean;
   erro?: string;
-  itemCatalogoId?: string;
+  itemCatalogoId?: number;
 }
 
 export interface ToggleAtivoResultado {
@@ -64,7 +64,7 @@ export async function criarItemCatalogo(dadosBrutos: unknown): Promise<SalvarIte
 }
 
 export async function editarItemCatalogo(
-  itemCatalogoId: string,
+  itemCatalogoId: number,
   dadosBrutos: unknown,
 ): Promise<SalvarItemCatalogoResultado> {
   const clinicaId = await getClinicaAtual();
@@ -91,7 +91,7 @@ export async function editarItemCatalogo(
   return { ok: true, itemCatalogoId };
 }
 
-async function alterarAtivo(itemCatalogoId: string, ativo: boolean): Promise<ToggleAtivoResultado> {
+async function alterarAtivo(itemCatalogoId: number, ativo: boolean): Promise<ToggleAtivoResultado> {
   const clinicaId = await getClinicaAtual();
 
   // `updateMany` com `clinicaId` no `where` (em vez de `update({ where: { id
@@ -110,13 +110,13 @@ async function alterarAtivo(itemCatalogoId: string, ativo: boolean): Promise<Tog
   return { ok: true };
 }
 
-export async function inativarItemCatalogo(itemCatalogoId: string): Promise<ToggleAtivoResultado> {
+export async function inativarItemCatalogo(itemCatalogoId: number): Promise<ToggleAtivoResultado> {
   // Sem nenhuma checagem de vínculo com Agendamento/ComandaItem: inativar
   // nunca apaga nem desvincula dado nenhum, então não há nada a bloquear
   // (ver Requirement "Inativação lógica de item de catálogo").
   return alterarAtivo(itemCatalogoId, false);
 }
 
-export async function reativarItemCatalogo(itemCatalogoId: string): Promise<ToggleAtivoResultado> {
+export async function reativarItemCatalogo(itemCatalogoId: number): Promise<ToggleAtivoResultado> {
   return alterarAtivo(itemCatalogoId, true);
 }

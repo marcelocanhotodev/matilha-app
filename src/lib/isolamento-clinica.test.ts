@@ -18,18 +18,15 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 describe("isolamento entre clínicas (Paciente como recurso de referência)", () => {
-  const clinicaAId = "test-isolamento-clinica-a";
-  const clinicaBId = "test-isolamento-clinica-b";
-  let pacienteBId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let pacienteBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Isolamento Clínica A" },
-        { id: clinicaBId, nome: "Test Isolamento Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Isolamento Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Isolamento Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const clienteB = await prisma.cliente.create({
       data: {
@@ -81,18 +78,15 @@ describe("isolamento entre clínicas (Paciente como recurso de referência)", ()
 // Repetição do mesmo padrão para Comanda (capability: atendimento-comanda,
 // task 10.2 — ver comentário no topo do arquivo).
 describe("isolamento entre clínicas (Comanda como recurso de referência)", () => {
-  const clinicaAId = "test-isolamento-comanda-clinica-a";
-  const clinicaBId = "test-isolamento-comanda-clinica-b";
-  let comandaBId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let comandaBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Isolamento Comanda Clínica A" },
-        { id: clinicaBId, nome: "Test Isolamento Comanda Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Isolamento Comanda Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Isolamento Comanda Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const comandaB = await prisma.comanda.create({
       data: { clinicaId: clinicaBId },

@@ -9,8 +9,12 @@ import { useState } from "react";
 import { formasPagamento, type FormaPagamentoValor, type TipoDescontoValor } from "@/lib/validators/comanda";
 
 export interface ItemSessao {
-  id: string;
-  itemCatalogoId: string;
+  // Número real (ComandaItem.id) depois de persistido, ou uma chave
+  // sintética `novo-<itemCatalogoId>-<timestamp>` enquanto o item só existe
+  // otimisticamente no client (ver aoAdicionarItem em
+  // atendimento-workspace.tsx) — nunca confundir com um id de verdade.
+  id: string | number;
+  itemCatalogoId: number | null;
   nome: string;
   preco: number;
   quantidade: number;
@@ -47,8 +51,8 @@ export function Carrinho({
    * controla se "Descartar" aparece. "Finalizar" também exige `itens.length
    * > 0` (Scenario "Finalizar sem itens"), checado abaixo. */
   temComanda: boolean;
-  onAlterarQuantidade: (comandaItemId: string, quantidade: number) => void;
-  onRemoverItem: (comandaItemId: string) => void;
+  onAlterarQuantidade: (comandaItemId: string | number, quantidade: number) => void;
+  onRemoverItem: (comandaItemId: string | number) => void;
   onMudarDesconto: (desconto: { tipo: TipoDescontoValor; valor: number }) => void;
   onFinalizar: (formaPagamento: FormaPagamentoValor) => void;
   onDescartar: () => void;

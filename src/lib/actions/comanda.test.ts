@@ -17,23 +17,20 @@ const { adicionarItem, removerItem, alterarQuantidade, aplicarDesconto, finaliza
   await import("@/lib/actions/comanda");
 
 describe("Server Actions de Comanda", () => {
-  const clinicaId = "test-comanda-action-clinica-a";
-  const clinicaOutraId = "test-comanda-action-clinica-b";
-  let veterinarioId: string;
-  let clienteId: string;
-  let pacienteId: string;
-  let itemAId: string; // preço 100
-  let itemBId: string; // preço 50
-  let itemOutraClinicaId: string;
+  let clinicaId: number;
+  let clinicaOutraId: number;
+  let veterinarioId: number;
+  let clienteId: number;
+  let pacienteId: number;
+  let itemAId: number; // preço 100
+  let itemBId: number; // preço 50
+  let itemOutraClinicaId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaId, nome: "Test Comanda Action Clínica A" },
-        { id: clinicaOutraId, nome: "Test Comanda Action Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinica = await prisma.clinica.create({ data: { nome: "Test Comanda Action Clínica A" } });
+    const clinicaOutra = await prisma.clinica.create({ data: { nome: "Test Comanda Action Clínica B" } });
+    clinicaId = clinica.id;
+    clinicaOutraId = clinicaOutra.id;
 
     const veterinario = await prisma.usuario.create({
       data: { nome: "Vet Teste Comanda", email: `vet-comanda-${Date.now()}@teste.matilha`, senhaHash: "x" },
@@ -78,7 +75,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Primeiro item cria a comanda" — avulso', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const resultado = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     expect(resultado.ok).toBe(true);
@@ -91,7 +88,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Adicionar item já presente na comanda" — incrementa em vez de duplicar', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     const segundo = await adicionarItem({
@@ -107,7 +104,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Preço do item é copiado no momento da adição" — snapshot não muda com o catálogo', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemBId, quantidade: 1 } });
     await prisma.itemCatalogo.update({ where: { id: itemBId }, data: { preco: 999 } });
@@ -121,7 +118,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it("removerItem e alterarQuantidade recalculam subtotal/total", async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 2 } }); // 200
     const item = await prisma.comandaItem.findFirstOrThrow({ where: { comandaId: primeiro.comandaId } });
@@ -143,7 +140,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Desconto maior que o subtotal" via aplicarDesconto — total nunca negativo', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemBId, quantidade: 1 } }); // subtotal 50
     const resultado = await aplicarDesconto({
@@ -157,7 +154,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Requirement "Retomar comanda aberta" — reabrir pelo mesmo agendamento reaproveita a mesma comanda', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const agendamento = await prisma.agendamento.create({
       data: { clinicaId, pacienteId, veterinarioId, dataHoraInicio: new Date() },
@@ -183,7 +180,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Requirement "Imutabilidade de comanda finalizada ou cancelada" — bloqueia alteração após finalizar', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     const finalizado = await finalizarComanda({ comandaId: primeiro.comandaId, formaPagamento: "PIX" });
@@ -200,7 +197,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Finalizar sem itens" — bloqueia a finalização', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     const item = await prisma.comandaItem.findFirstOrThrow({ where: { comandaId: primeiro.comandaId } });
@@ -211,7 +208,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Finalizar comanda conclui o agendamento" (spec de agendamento)', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const agendamento = await prisma.agendamento.create({
       data: { clinicaId, pacienteId, veterinarioId, dataHoraInicio: new Date() },
@@ -229,7 +226,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Descartar sem motivo" — bloqueia a ação', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     const resultado = await descartarComanda({ comandaId: primeiro.comandaId, motivo: "" });
@@ -240,7 +237,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Descartar comanda vinculada a um agendamento" — comanda e agendamento cancelados', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const agendamento = await prisma.agendamento.create({
       data: { clinicaId, pacienteId, veterinarioId, dataHoraInicio: new Date() },
@@ -262,7 +259,7 @@ describe("Server Actions de Comanda", () => {
   });
 
   it('Scenario "Descartar comanda avulsa" — sem efeito em agendamento, pois não existe nenhum', async () => {
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
 
     const primeiro = await adicionarItem({ item: { itemCatalogoId: itemAId, quantidade: 1 } });
     const descartado = await descartarComanda({ comandaId: primeiro.comandaId, motivo: "Encaixe cancelado" });
@@ -274,19 +271,19 @@ describe("Server Actions de Comanda", () => {
   });
 
   it("comanda de outra clínica não é acessível por ID direto (isolamento)", async () => {
-    clinicaAtivaMock.current = clinicaOutraId;
+    clinicaAtivaMock.current = String(clinicaOutraId);
     const criada = await adicionarItem({ item: { itemCatalogoId: itemOutraClinicaId, quantidade: 1 } });
     expect(criada.ok).toBe(true);
 
     // Sessão ativa agora é a clínica A, mas o ID da comanda é da clínica B.
-    clinicaAtivaMock.current = clinicaId;
+    clinicaAtivaMock.current = String(clinicaId);
     const tentativa = await aplicarDesconto({
       comandaId: criada.comandaId!,
       desconto: { tipo: "FIXO", valor: 10 },
     });
     expect(tentativa.ok).toBe(false);
 
-    clinicaAtivaMock.current = clinicaOutraId;
+    clinicaAtivaMock.current = String(clinicaOutraId);
     const aindaSemDesconto = await prisma.comanda.findUnique({ where: { id: criada.comandaId! } });
     expect(Number(aindaSemDesconto?.desconto)).toBe(0);
   });

@@ -38,7 +38,7 @@ const DEBOUNCE_MS = 10_000;
 function itensDeComanda(comanda: ComandaComItens): ItemSessao[] {
   return comanda.itens.map((i) => ({
     id: i.id,
-    itemCatalogoId: i.itemCatalogoId ?? "",
+    itemCatalogoId: i.itemCatalogoId,
     nome: i.nomeSnapshot,
     preco: Number(i.precoSnapshot),
     quantidade: i.quantidade,
@@ -57,23 +57,23 @@ export function AtendimentoWorkspace({
   const router = useRouter();
   const [pendente, iniciarTransicao] = useTransition();
 
-  const [selecaoId, setSelecaoId] = useState<string | null>(null); // agendamentoId, "avulso" ou null
-  const [comandaId, setComandaId] = useState<string | null>(null);
+  const [selecaoId, setSelecaoId] = useState<number | "avulso" | null>(null); // agendamentoId, "avulso" ou null
+  const [comandaId, setComandaId] = useState<number | null>(null);
   const [itens, setItens] = useState<ItemSessao[]>([]);
   const [desconto, setDesconto] = useState<{ tipo: TipoDescontoValor; valor: number }>({ tipo: "FIXO", valor: 0 });
   const [erro, setErro] = useState<string | null>(null);
-  const [descarteAlvo, setDescarteAlvo] = useState<string | null>(null);
+  const [descarteAlvo, setDescarteAlvo] = useState<number | null>(null);
   const [enviandoDescarte, setEnviandoDescarte] = useState(false);
 
   // Refs além do state: os callbacks de debounce disparam depois de um
   // timer, quando o closure do render que os criou já pode estar
   // desatualizado — leem sempre o valor mais recente via ref.
-  const comandaIdRef = useRef<string | null>(null);
-  const agendamentoIdRef = useRef<string | null>(null);
+  const comandaIdRef = useRef<number | null>(null);
+  const agendamentoIdRef = useRef<number | null>(null);
   const debounceQuantidadeRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const debounceDescontoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function definirComandaId(id: string | null) {
+  function definirComandaId(id: number | null) {
     comandaIdRef.current = id;
     setComandaId(id);
   }
@@ -165,11 +165,12 @@ export function AtendimentoWorkspace({
     });
   }
 
-  function aoAlterarQuantidade(comandaItemId: string, quantidade: number) {
+  function aoAlterarQuantidade(comandaItemId: string | number, quantidade: number) {
     setItens((atual) => atual.map((i) => (i.id === comandaItemId ? { ...i, quantidade } : i)));
 
-    if (debounceQuantidadeRef.current[comandaItemId]) clearTimeout(debounceQuantidadeRef.current[comandaItemId]);
-    debounceQuantidadeRef.current[comandaItemId] = setTimeout(() => {
+    const chave = String(comandaItemId);
+    if (debounceQuantidadeRef.current[chave]) clearTimeout(debounceQuantidadeRef.current[chave]);
+    debounceQuantidadeRef.current[chave] = setTimeout(() => {
       if (!comandaIdRef.current) return;
       iniciarTransicao(async () => {
         const resultado = await alterarQuantidadeAction({
@@ -183,7 +184,7 @@ export function AtendimentoWorkspace({
     }, DEBOUNCE_MS);
   }
 
-  function aoRemoverItem(comandaItemId: string) {
+  function aoRemoverItem(comandaItemId: string | number) {
     setItens((atual) => atual.filter((i) => i.id !== comandaItemId));
 
     if (!comandaIdRef.current) return; // item ainda não persistido (raro, mas possível entre o clique e a resposta do primeiro item)

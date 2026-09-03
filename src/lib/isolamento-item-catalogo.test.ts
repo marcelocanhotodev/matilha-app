@@ -8,18 +8,15 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 describe("isolamento entre clínicas (ItemCatalogo como recurso)", () => {
-  const clinicaAId = "test-isolamento-item-catalogo-clinica-a";
-  const clinicaBId = "test-isolamento-item-catalogo-clinica-b";
-  let itemBId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let itemBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Isolamento ItemCatalogo Clínica A" },
-        { id: clinicaBId, nome: "Test Isolamento ItemCatalogo Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Isolamento ItemCatalogo Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Isolamento ItemCatalogo Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const itemB = await prisma.itemCatalogo.create({
       data: { clinicaId: clinicaBId, nome: "Antipulgas (pipeta)", categoria: "PRODUTO", preco: 55 },

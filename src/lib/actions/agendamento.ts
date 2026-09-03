@@ -21,7 +21,7 @@ export interface AgendamentoActionResultado {
 }
 
 export interface ConflitoAgendamento {
-  agendamentoId: string;
+  agendamentoId: number;
   pacienteNome: string;
   inicio: string;
   fim: string;
@@ -30,7 +30,7 @@ export interface ConflitoAgendamento {
 export interface CriarAgendamentoResultado {
   ok: boolean;
   erro?: string;
-  agendamentoId?: string;
+  agendamentoId?: number;
   /** Presente (e `ok: false`) quando há sobreposição de horário para o
    * mesmo profissional e a chamada não veio com `ignorarConflito: true` —
    * não é um erro de validação, é um aviso que o formulário deve mostrar
@@ -48,7 +48,7 @@ function formatarHora(data: Date): string {
 }
 
 const selecionarAgendamentoSchema = z.object({
-  agendamentoId: z.string().min(1),
+  agendamentoId: z.coerce.number().int().positive(),
 });
 
 /**

@@ -25,7 +25,7 @@ import type { Comanda } from "@prisma/client";
 export interface ComandaActionResultado {
   ok: boolean;
   erro?: string;
-  comandaId?: string;
+  comandaId?: number;
 }
 
 /**
@@ -52,8 +52,8 @@ export interface ComandaActionResultado {
  * "é de outra clínica" (mesmo padrão de isolamento do resto do projeto).
  */
 async function obterOuCriarComandaAberta(
-  clinicaId: string,
-  args: { comandaId?: string; agendamentoId?: string },
+  clinicaId: number,
+  args: { comandaId?: number; agendamentoId?: number },
 ): Promise<Comanda> {
   if (args.comandaId) {
     const comanda = await prisma.comanda.findFirst({ where: { id: args.comandaId, clinicaId } });
@@ -96,7 +96,7 @@ async function obterOuCriarComandaAberta(
  * efetivo em reais configurado por último — não é recalculado a partir de um
  * percentual "vivo" só porque o subtotal mudou; `aplicarDesconto` é o único
  * jeito de mudar esse valor. */
-async function recalcularTotais(comandaId: string): Promise<void> {
+async function recalcularTotais(comandaId: number): Promise<void> {
   const itens = await prisma.comandaItem.findMany({ where: { comandaId } });
   const subtotal = itens.reduce((soma, item) => soma + Number(item.subtotal), 0);
 
@@ -111,8 +111,8 @@ function erroPara(erro: unknown, mensagemPadrao: string): string {
 }
 
 const adicionarItemSchema = z.object({
-  comandaId: z.string().min(1).optional(),
-  agendamentoId: z.string().min(1).optional(),
+  comandaId: z.coerce.number().int().positive().optional(),
+  agendamentoId: z.coerce.number().int().positive().optional(),
   item: itemCarrinhoInputSchema,
 });
 
@@ -171,8 +171,8 @@ export async function adicionarItem(dadosBrutos: unknown): Promise<ComandaAction
 }
 
 const removerItemSchema = z.object({
-  comandaId: z.string().min(1),
-  comandaItemId: z.string().min(1),
+  comandaId: z.coerce.number().int().positive(),
+  comandaItemId: z.coerce.number().int().positive(),
 });
 
 export async function removerItem(dadosBrutos: unknown): Promise<ComandaActionResultado> {
@@ -201,8 +201,8 @@ export async function removerItem(dadosBrutos: unknown): Promise<ComandaActionRe
 }
 
 const alterarQuantidadeSchema = z.object({
-  comandaId: z.string().min(1),
-  comandaItemId: z.string().min(1),
+  comandaId: z.coerce.number().int().positive(),
+  comandaItemId: z.coerce.number().int().positive(),
   quantidade: itemCarrinhoInputSchema.shape.quantidade,
 });
 
@@ -234,7 +234,7 @@ export async function alterarQuantidade(dadosBrutos: unknown): Promise<ComandaAc
 }
 
 const aplicarDescontoSchema = z.object({
-  comandaId: z.string().min(1),
+  comandaId: z.coerce.number().int().positive(),
   desconto: descontoInputSchema,
 });
 
@@ -263,7 +263,7 @@ export async function aplicarDesconto(dadosBrutos: unknown): Promise<ComandaActi
 }
 
 const finalizarComandaSchema = z.object({
-  comandaId: z.string().min(1),
+  comandaId: z.coerce.number().int().positive(),
   formaPagamento: z.enum(formasPagamento, { required_error: "Forma de pagamento é obrigatória." }),
 });
 
@@ -308,7 +308,7 @@ export async function finalizarComanda(dadosBrutos: unknown): Promise<ComandaAct
 }
 
 const descartarComandaSchema = motivoDescarteSchema.extend({
-  comandaId: z.string().min(1),
+  comandaId: z.coerce.number().int().positive(),
 });
 
 export async function descartarComanda(dadosBrutos: unknown): Promise<ComandaActionResultado> {

@@ -19,25 +19,22 @@ vi.mock("@/lib/auth", () => ({
 const { selecionarClinica } = await import("@/lib/actions/clinica");
 
 describe("selecionarClinica (Server Action)", () => {
-  const clinicaComVinculoId = "test-action-clinica-com-vinculo";
-  const clinicaSemVinculoId = "test-action-clinica-sem-vinculo";
-  let usuarioId: string;
+  let clinicaComVinculoId: number;
+  let clinicaSemVinculoId: number;
+  let usuarioId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaComVinculoId, nome: "Test Action Clínica Com Vínculo" },
-        { id: clinicaSemVinculoId, nome: "Test Action Clínica Sem Vínculo" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaComVinculo = await prisma.clinica.create({ data: { nome: "Test Action Clínica Com Vínculo" } });
+    const clinicaSemVinculo = await prisma.clinica.create({ data: { nome: "Test Action Clínica Sem Vínculo" } });
+    clinicaComVinculoId = clinicaComVinculo.id;
+    clinicaSemVinculoId = clinicaSemVinculo.id;
 
     const senhaHash = await bcrypt.hash("senha-teste", 10);
     const usuario = await prisma.usuario.create({
       data: { nome: "Usuário Action", email: "usuario-action@teste.matilha", senhaHash },
     });
     usuarioId = usuario.id;
-    usuarioIdMock.current = usuarioId;
+    usuarioIdMock.current = String(usuarioId);
 
     await prisma.usuarioClinica.create({
       data: { usuarioId, clinicaId: clinicaComVinculoId, papel: "ADMIN" },
@@ -53,12 +50,12 @@ describe("selecionarClinica (Server Action)", () => {
   });
 
   it("aceita a troca quando o usuário tem vínculo com a clínica (task 4.1)", async () => {
-    const resultado = await selecionarClinica(clinicaComVinculoId);
+    const resultado = await selecionarClinica(String(clinicaComVinculoId));
     expect(resultado.ok).toBe(true);
   });
 
   it("rejeita a troca quando o usuário não tem vínculo com a clínica (task 4.2)", async () => {
-    const resultado = await selecionarClinica(clinicaSemVinculoId);
+    const resultado = await selecionarClinica(String(clinicaSemVinculoId));
     expect(resultado.ok).toBe(false);
     expect(resultado.erro).toBeTruthy();
   });

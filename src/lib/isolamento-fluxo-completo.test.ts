@@ -28,27 +28,24 @@ const { criarAgendamento } = await import("@/lib/actions/agendamento");
 const { adicionarItem } = await import("@/lib/actions/comanda");
 
 describe("fluxo completo alternado entre duas clínicas (cliente → paciente → agendamento → comanda)", () => {
-  const clinicaAId = "test-fluxo-completo-clinica-a";
-  const clinicaBId = "test-fluxo-completo-clinica-b";
-  let veterinarioAId: string;
-  let veterinarioBId: string;
-  let itemCatalogoAId: string;
-  let itemCatalogoBId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let veterinarioAId: number;
+  let veterinarioBId: number;
+  let itemCatalogoAId: number;
+  let itemCatalogoBId: number;
 
   // Preenchidos durante o fluxo, um lado por vez.
-  let clienteAId: string, clienteBId: string;
-  let pacienteAId: string, pacienteBId: string;
-  let agendamentoAId: string, agendamentoBId: string;
-  let comandaAId: string, comandaBId: string;
+  let clienteAId: number, clienteBId: number;
+  let pacienteAId: number, pacienteBId: number;
+  let agendamentoAId: number, agendamentoBId: number;
+  let comandaAId: number, comandaBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Fluxo Completo Clínica A" },
-        { id: clinicaBId, nome: "Test Fluxo Completo Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Fluxo Completo Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Fluxo Completo Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const veterinarioA = await prisma.usuario.create({
       data: { nome: "Vet Fluxo A", email: `vet-fluxo-a-${Date.now()}@teste.matilha`, senhaHash: "x" },
@@ -89,7 +86,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
   });
 
   it("passo 1 — criarCliente: A e B, cada um só visível na própria clínica", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultadoA = await criarCliente({
       tipo: "FISICA",
       nome: "Tutor Fluxo A",
@@ -99,7 +96,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
     expect(resultadoA.ok).toBe(true);
     clienteAId = resultadoA.clienteId!;
 
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const resultadoB = await criarCliente({
       tipo: "FISICA",
       nome: "Tutor Fluxo B",
@@ -117,7 +114,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
   });
 
   it("passo 2 — criarPaciente: A e B, cada um só visível na própria clínica", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultadoA = await criarPaciente({
       clienteId: clienteAId,
       nome: "Pet Fluxo A",
@@ -128,7 +125,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
     expect(resultadoA.ok).toBe(true);
     pacienteAId = resultadoA.pacienteId!;
 
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const resultadoB = await criarPaciente({
       clienteId: clienteBId,
       nome: "Pet Fluxo B",
@@ -152,7 +149,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
   });
 
   it("passo 3 — criarAgendamento: A e B, cada um só visível na própria clínica", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultadoA = await criarAgendamento({
       pacienteId: pacienteAId,
       veterinarioId: veterinarioAId,
@@ -163,7 +160,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
     expect(resultadoA.ok).toBe(true);
     agendamentoAId = resultadoA.agendamentoId!;
 
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const resultadoB = await criarAgendamento({
       pacienteId: pacienteBId,
       veterinarioId: veterinarioBId,
@@ -181,7 +178,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
   });
 
   it("passo 4 — adicionarItem (abre comanda pelo agendamento): A e B, cada uma só visível na própria clínica", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultadoA = await adicionarItem({
       agendamentoId: agendamentoAId,
       item: { itemCatalogoId: itemCatalogoAId, quantidade: 1 },
@@ -189,7 +186,7 @@ describe("fluxo completo alternado entre duas clínicas (cliente → paciente �
     expect(resultadoA.ok).toBe(true);
     comandaAId = resultadoA.comandaId!;
 
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const resultadoB = await adicionarItem({
       agendamentoId: agendamentoBId,
       item: { itemCatalogoId: itemCatalogoBId, quantidade: 2 },

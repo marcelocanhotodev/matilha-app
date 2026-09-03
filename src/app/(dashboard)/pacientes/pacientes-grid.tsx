@@ -13,7 +13,7 @@ import { calcularIdadeLabel } from "@/lib/format/idade";
 import { PacienteModal } from "./paciente-modal";
 
 export type PacienteListItem = Paciente & { cliente: { nome: string } };
-export type ClienteOpcao = { id: string; nome: string };
+export type ClienteOpcao = { id: number; nome: string };
 
 const SPECIES_META: Record<string, { label: string; emoji: string; bg: string }> = {
   CAO: { label: "Cão", emoji: "🐶", bg: "#fbf0dc" },
@@ -38,7 +38,7 @@ export function PacientesGrid({
 }) {
   const router = useRouter();
   const [pacienteAberto, setPacienteAberto] = useState<PacienteListItem | "novo" | null>(null);
-  const [pendenteId, setPendenteId] = useState<string | null>(null);
+  const [pendenteId, setPendenteId] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, iniciarTransicao] = useTransition();
 

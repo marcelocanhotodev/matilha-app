@@ -43,7 +43,7 @@ export interface DiaColuna {
 }
 
 export interface AgendamentoGrade {
-  id: string;
+  id: number;
   diaChave: string; // yyyy-mm-dd, no fuso da clínica — já resolvido no servidor
   horaDecimal: number; // ex.: 9.5 = 09:30, já no fuso da clínica
   horaLabel: string; // "09:30", já formatado no fuso da clínica

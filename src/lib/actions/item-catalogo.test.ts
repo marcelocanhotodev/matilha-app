@@ -19,17 +19,14 @@ const { criarItemCatalogo, editarItemCatalogo, inativarItemCatalogo, reativarIte
 );
 
 describe("Server Actions de ItemCatalogo", () => {
-  const clinicaAId = "test-item-catalogo-action-clinica-a";
-  const clinicaBId = "test-item-catalogo-action-clinica-b";
+  let clinicaAId: number;
+  let clinicaBId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test ItemCatalogo Action Clínica A" },
-        { id: clinicaBId, nome: "Test ItemCatalogo Action Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test ItemCatalogo Action Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test ItemCatalogo Action Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
   });
 
   afterAll(async () => {
@@ -44,7 +41,7 @@ describe("Server Actions de ItemCatalogo", () => {
     await prisma.agendamento.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
     await prisma.comanda.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
     await prisma.usuario.deleteMany({
-      where: { id: { in: comandas.map((c) => c.veterinarioId).filter((id): id is string => !!id) } },
+      where: { id: { in: comandas.map((c) => c.veterinarioId).filter((id): id is number => !!id) } },
     });
     await prisma.paciente.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
     await prisma.cliente.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
@@ -53,7 +50,7 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it("criarItemCatalogo cria o item na clinicaId ativa da sessão (task 2.1)", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const resultado = await criarItemCatalogo({
       nome: "Consulta de rotina",
@@ -70,7 +67,7 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it('Scenario "Preço inválido" — preço negativo é rejeitado pela action (task 2.1)', async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const resultado = await criarItemCatalogo({
       nome: "Item inválido",
@@ -83,7 +80,7 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it('Scenario "Inativar item já usado em agendamentos e comandas" (task 2.2)', async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const criado = await criarItemCatalogo({
       nome: "Vacinação (V10)",
@@ -157,13 +154,13 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it("inativarItemCatalogo não afeta item de outra clínica, mesmo passando o ID direto (isolamento, task 2.1)", async () => {
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const itemDaClinicaB = await prisma.itemCatalogo.create({
       data: { clinicaId: clinicaBId, nome: "Banho e tosa", categoria: "SERVICO", preco: 70 },
     });
 
     // Sessão ativa é A, mas o ID passado pertence a B.
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultado = await inativarItemCatalogo(itemDaClinicaB.id);
 
     expect(resultado.ok).toBe(false);
@@ -172,7 +169,7 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it("criarItemCatalogo grava duracaoPadraoMinutos para serviço, e nunca para produto", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const servico = await criarItemCatalogo({
       nome: "Consulta com duração",
@@ -196,12 +193,12 @@ describe("Server Actions de ItemCatalogo", () => {
   });
 
   it("editarItemCatalogo não edita item de outra clínica, mesmo passando o ID direto (isolamento, task 2.1)", async () => {
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const itemDaClinicaB = await prisma.itemCatalogo.create({
       data: { clinicaId: clinicaBId, nome: "Ração premium 1kg", categoria: "PRODUTO", preco: 38 },
     });
 
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultado = await editarItemCatalogo(itemDaClinicaB.id, {
       nome: "Nome Alterado Indevidamente",
       categoria: "PRODUTO",

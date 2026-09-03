@@ -8,6 +8,15 @@
 // a aplicação usa ao persistir (ver openspec/changes/implementar-clientes/
 // design.md, Decisão 2). Nunca gravar com máscara aqui.
 //
+// IDs são Int autoincrement (nunca escolhidos na mão) — a idempotência do
+// script não vem mais de um `id` fixo, e sim de: (a) upsert por uma unique
+// key de negócio real do schema (Usuario.email, Cliente[clinicaId, cpf/cnpj])
+// onde ela existe, ou (b) apagar e recriar a clínica de seed inteira nas
+// tabelas sem unique key de negócio (Clinica, ItemCatalogo, Paciente,
+// Agendamento, Comanda, ComandaItem), resolvendo a clínica pelo e-mail (esse
+// sim único) do usuário admin dela. Cada linha criada encadeia o `.id`
+// retornado nas linhas seguintes.
+//
 // Rodar com: npm run db:seed
 
 import { PrismaClient, CategoriaCatalogo, PapelUsuario, TipoPessoa } from "@prisma/client";
@@ -15,39 +24,65 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const clinica = await prisma.clinica.upsert({
-    where: { id: "clinica-seed-vida-animal" },
-    update: {},
-    create: {
-      id: "clinica-seed-vida-animal",
-      nome: "Clínica Vida Animal",
-    },
-  });
-
-  const senhaHash = await bcrypt.hash("trocar-esta-senha", 10);
+/** Cria (ou reaproveita) a clínica associada a um usuário admin, identificado
+ * por e-mail — a única chave estável entre execuções do seed. Se a clínica já
+ * existe, apaga todo o dado "solto" dela (o que não tem unique key própria)
+ * antes de recriar, pra o script poder rodar quantas vezes quiser sem
+ * duplicar nem acumular lixo. */
+async function upsertClinicaComAdmin(params: {
+  clinicaNome: string;
+  adminNome: string;
+  adminEmail: string;
+  senhaHash: string;
+}) {
+  const { clinicaNome, adminNome, adminEmail, senhaHash } = params;
 
   const usuario = await prisma.usuario.upsert({
-    where: { email: "ana@vidaanimal.com.br" },
+    where: { email: adminEmail },
     update: {},
-    create: {
-      nome: "Ana Paula",
-      email: "ana@vidaanimal.com.br",
-      senhaHash,
-    },
+    create: { nome: adminNome, email: adminEmail, senhaHash },
   });
 
-  await prisma.usuarioClinica.upsert({
-    where: { usuarioId_clinicaId: { usuarioId: usuario.id, clinicaId: clinica.id } },
-    update: {},
-    create: {
-      usuarioId: usuario.id,
-      clinicaId: clinica.id,
-      papel: PapelUsuario.ADMIN,
-    },
+  const vinculoExistente = await prisma.usuarioClinica.findFirst({
+    where: { usuarioId: usuario.id, papel: PapelUsuario.ADMIN },
+    include: { clinica: true },
   });
 
-  const itensCatalogo = [
+  let clinica = vinculoExistente?.clinica ?? null;
+
+  if (!clinica) {
+    clinica = await prisma.clinica.create({ data: { nome: clinicaNome } });
+    await prisma.usuarioClinica.create({
+      data: { usuarioId: usuario.id, clinicaId: clinica.id, papel: PapelUsuario.ADMIN },
+    });
+  }
+
+  // Limpa o dado "solto" (sem unique key de negócio) desta clínica pra
+  // recriar do zero a seguir — ordem que respeita as FKs (comanda_itens ->
+  // comandas/agendamentos -> pacientes/itens_catalogo).
+  await prisma.comandaItem.deleteMany({ where: { comanda: { clinicaId: clinica.id } } });
+  await prisma.comanda.deleteMany({ where: { clinicaId: clinica.id } });
+  await prisma.agendamento.deleteMany({ where: { clinicaId: clinica.id } });
+  await prisma.paciente.deleteMany({ where: { clinicaId: clinica.id } });
+  await prisma.itemCatalogo.deleteMany({ where: { clinicaId: clinica.id } });
+
+  return { usuario, clinica };
+}
+
+async function main() {
+  const senhaHash = await bcrypt.hash("trocar-esta-senha", 10);
+
+  // -------------------------------------------------------------------
+  // Clínica A — "Vida Animal"
+  // -------------------------------------------------------------------
+  const { usuario, clinica } = await upsertClinicaComAdmin({
+    clinicaNome: "Clínica Vida Animal",
+    adminNome: "Ana Paula",
+    adminEmail: "ana@vidaanimal.com.br",
+    senhaHash,
+  });
+
+  const itensCatalogoDefs = [
     // duracaoPadraoMinutos: só serviço (capability: agendamento, Requirement:
     // Criação de agendamento — pré-preenche a duração do agendamento).
     { nome: "Consulta de rotina", categoria: CategoriaCatalogo.SERVICO, preco: 120, icone: "🩺", duracaoPadraoMinutos: 30 },
@@ -57,17 +92,14 @@ async function main() {
     { nome: "Antipulgas (pipeta)", categoria: CategoriaCatalogo.PRODUTO, preco: 55, icone: "🧴", duracaoPadraoMinutos: null },
   ];
 
-  for (const item of itensCatalogo) {
-    await prisma.itemCatalogo.upsert({
-      where: { id: `seed-${item.nome}` },
-      update: item,
-      create: { id: `seed-${item.nome}`, clinicaId: clinica.id, ...item },
-    });
+  const itensCatalogo = new Map<string, Awaited<ReturnType<typeof prisma.itemCatalogo.create>>>();
+  for (const item of itensCatalogoDefs) {
+    const criado = await prisma.itemCatalogo.create({ data: { clinicaId: clinica.id, ...item } });
+    itensCatalogo.set(item.nome, criado);
   }
 
-  const clientes = [
+  const clientesDefs = [
     {
-      id: "seed-cliente-marina-silva",
       tipo: TipoPessoa.FISICA,
       nome: "Marina Silva",
       cpf: "38452617062", // normalizado, sem máscara
@@ -82,7 +114,6 @@ async function main() {
       uf: "SP",
     },
     {
-      id: "seed-cliente-pet-amigo-fiel",
       tipo: TipoPessoa.JURIDICA,
       nome: "Pet Shop Amigo Fiel Ltda",
       cnpj: "11222333000181", // normalizado, sem máscara
@@ -92,13 +123,20 @@ async function main() {
     },
   ];
 
-  for (const dados of clientes) {
-    const { id, ...resto } = dados;
-    await prisma.cliente.upsert({
-      where: { id },
+  const clientes = new Map<string, Awaited<ReturnType<typeof prisma.cliente.upsert>>>();
+  for (const dados of clientesDefs) {
+    const criado = await prisma.cliente.upsert({
+      where: {
+        // Cliente tem @@unique([clinicaId, cpf]) e @@unique([clinicaId, cnpj])
+        // — usa o que existir para este registro.
+        ...(dados.cpf
+          ? { clinicaId_cpf: { clinicaId: clinica.id, cpf: dados.cpf } }
+          : { clinicaId_cnpj: { clinicaId: clinica.id, cnpj: dados.cnpj! } }),
+      },
       update: {},
-      create: { id, clinicaId: clinica.id, ...resto },
+      create: { clinicaId: clinica.id, ...dados },
     });
+    clientes.set(dados.nome, criado);
   }
 
   // Pacientes e agendamentos de hoje — só o suficiente para a fila da tela
@@ -106,14 +144,16 @@ async function main() {
   // mostrar. Sem isso a fila fica sempre vazia, já que esta change não
   // constrói a tela de criação de agendamento (fora de escopo — ver
   // openspec/changes/.../implementar-atendimento-comanda/proposal.md).
-  const pacientes = [
-    { id: "seed-paciente-rex", clienteId: "seed-cliente-marina-silva", nome: "Rex", especie: "CAO", raca: "SRD", sexo: "MACHO" },
-    { id: "seed-paciente-mimi", clienteId: "seed-cliente-marina-silva", nome: "Mimi", especie: "GATO", raca: "SRD", sexo: "FEMEA" },
+  const pacientesDefs = [
+    { nome: "Rex", clienteNome: "Marina Silva", especie: "CAO", raca: "SRD", sexo: "MACHO" },
+    { nome: "Mimi", clienteNome: "Marina Silva", especie: "GATO", raca: "SRD", sexo: "FEMEA" },
   ] as const;
 
-  for (const dados of pacientes) {
-    const { id, ...resto } = dados;
-    await prisma.paciente.upsert({ where: { id }, update: {}, create: { id, clinicaId: clinica.id, ...resto } });
+  const pacientes = new Map<string, Awaited<ReturnType<typeof prisma.paciente.create>>>();
+  for (const { clienteNome, ...dados } of pacientesDefs) {
+    const clienteId = clientes.get(clienteNome)!.id;
+    const criado = await prisma.paciente.create({ data: { clinicaId: clinica.id, clienteId, ...dados } });
+    pacientes.set(dados.nome, criado);
   }
 
   // Horário calculado a partir de "agora" a cada vez que o seed roda — nunca
@@ -123,68 +163,36 @@ async function main() {
     return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), hora, minuto, 0, 0);
   }
 
-  const agendamentosHoje = [
-    {
-      id: "seed-agendamento-rex-manha",
-      pacienteId: "seed-paciente-rex",
-      itemCatalogoId: "seed-Consulta de rotina",
-      dataHoraInicio: hojeAs(9, 0),
-    },
-    {
-      id: "seed-agendamento-mimi-manha",
-      pacienteId: "seed-paciente-mimi",
-      itemCatalogoId: "seed-Vacinação (V10)",
-      dataHoraInicio: hojeAs(11, 0),
-    },
-    {
-      id: "seed-agendamento-rex-tarde",
-      pacienteId: "seed-paciente-rex",
-      itemCatalogoId: "seed-Banho e tosa",
-      dataHoraInicio: hojeAs(15, 30),
-    },
+  const agendamentosHojeDefs = [
+    { pacienteNome: "Rex", itemCatalogoNome: "Consulta de rotina", dataHoraInicio: hojeAs(9, 0) },
+    { pacienteNome: "Mimi", itemCatalogoNome: "Vacinação (V10)", dataHoraInicio: hojeAs(11, 0) },
+    { pacienteNome: "Rex", itemCatalogoNome: "Banho e tosa", dataHoraInicio: hojeAs(15, 30) },
   ];
 
-  for (const dados of agendamentosHoje) {
-    const { id, dataHoraInicio, ...resto } = dados;
-    await prisma.agendamento.upsert({
-      where: { id },
-      update: { dataHoraInicio }, // recalcula "hoje" toda vez que o seed roda de novo
-      create: { id, clinicaId: clinica.id, veterinarioId: usuario.id, dataHoraInicio, ...resto },
+  for (const { pacienteNome, itemCatalogoNome, dataHoraInicio } of agendamentosHojeDefs) {
+    await prisma.agendamento.create({
+      data: {
+        clinicaId: clinica.id,
+        veterinarioId: usuario.id,
+        pacienteId: pacientes.get(pacienteNome)!.id,
+        itemCatalogoId: itensCatalogo.get(itemCatalogoNome)!.id,
+        dataHoraInicio,
+      },
     });
   }
 
-  // Segunda clínica — permite explorar troca de clínica pela UI com dados
-  // reais dos dois lados desde o primeiro `npm run db:seed` (ver
+  // -------------------------------------------------------------------
+  // Clínica B — "Pata Feliz" — permite explorar troca de clínica pela UI
+  // com dados reais dos dois lados desde o primeiro `npm run db:seed` (ver
   // openspec/changes/testar-fluxo-multiclinica/proposal.md). Volume mínimo
   // de propósito: só o suficiente pra aparecer em cada tela, não pra
   // estressar performance (design.md, Decisão 3).
-  const clinicaB = await prisma.clinica.upsert({
-    where: { id: "clinica-seed-pata-feliz" },
-    update: {},
-    create: {
-      id: "clinica-seed-pata-feliz",
-      nome: "Clínica Pata Feliz",
-    },
-  });
-
-  const usuarioB = await prisma.usuario.upsert({
-    where: { email: "joao@patafeliz.com.br" },
-    update: {},
-    create: {
-      nome: "João Pedro",
-      email: "joao@patafeliz.com.br",
-      senhaHash,
-    },
-  });
-
-  await prisma.usuarioClinica.upsert({
-    where: { usuarioId_clinicaId: { usuarioId: usuarioB.id, clinicaId: clinicaB.id } },
-    update: {},
-    create: {
-      usuarioId: usuarioB.id,
-      clinicaId: clinicaB.id,
-      papel: PapelUsuario.ADMIN,
-    },
+  // -------------------------------------------------------------------
+  const { usuario: usuarioB, clinica: clinicaB } = await upsertClinicaComAdmin({
+    clinicaNome: "Clínica Pata Feliz",
+    adminNome: "João Pedro",
+    adminEmail: "joao@patafeliz.com.br",
+    senhaHash,
   });
 
   // Ana também tem vínculo com a segunda clínica — usuário com acesso a
@@ -194,18 +202,11 @@ async function main() {
   await prisma.usuarioClinica.upsert({
     where: { usuarioId_clinicaId: { usuarioId: usuario.id, clinicaId: clinicaB.id } },
     update: {},
-    create: {
-      usuarioId: usuario.id,
-      clinicaId: clinicaB.id,
-      papel: PapelUsuario.ADMIN,
-    },
+    create: { usuarioId: usuario.id, clinicaId: clinicaB.id, papel: PapelUsuario.ADMIN },
   });
 
-  const itemCatalogoB = await prisma.itemCatalogo.upsert({
-    where: { id: "seed-b-consulta-de-rotina" },
-    update: {},
-    create: {
-      id: "seed-b-consulta-de-rotina",
+  const itemCatalogoB = await prisma.itemCatalogo.create({
+    data: {
       clinicaId: clinicaB.id,
       nome: "Consulta de rotina",
       categoria: CategoriaCatalogo.SERVICO,
@@ -216,10 +217,9 @@ async function main() {
   });
 
   const clienteB = await prisma.cliente.upsert({
-    where: { id: "seed-b-cliente-julia-santos" },
+    where: { clinicaId_cpf: { clinicaId: clinicaB.id, cpf: "72935184600" } },
     update: {},
     create: {
-      id: "seed-b-cliente-julia-santos",
       clinicaId: clinicaB.id,
       tipo: TipoPessoa.FISICA,
       nome: "Júlia Santos",
@@ -236,11 +236,8 @@ async function main() {
     },
   });
 
-  const pacienteB = await prisma.paciente.upsert({
-    where: { id: "seed-b-paciente-nina" },
-    update: {},
-    create: {
-      id: "seed-b-paciente-nina",
+  const pacienteB = await prisma.paciente.create({
+    data: {
       clinicaId: clinicaB.id,
       clienteId: clienteB.id,
       nome: "Nina",
@@ -253,12 +250,8 @@ async function main() {
   // status EM_ATENDIMENTO (não AGUARDANDO): já existe uma comanda aberta
   // vinculada a este agendamento logo abaixo — pela Requirement "Ciclo de
   // status do agendamento", uma Comanda só existe depois dessa transição.
-  const agendamentoBId = "seed-b-agendamento-nina-manha";
-  await prisma.agendamento.upsert({
-    where: { id: agendamentoBId },
-    update: { dataHoraInicio: hojeAs(10, 0), status: "EM_ATENDIMENTO" }, // recalcula "hoje" toda vez que o seed roda de novo
-    create: {
-      id: agendamentoBId,
+  const agendamentoB = await prisma.agendamento.create({
+    data: {
       clinicaId: clinicaB.id,
       pacienteId: pacienteB.id,
       veterinarioId: usuarioB.id,
@@ -268,13 +261,10 @@ async function main() {
     },
   });
 
-  const comandaB = await prisma.comanda.upsert({
-    where: { agendamentoId: agendamentoBId },
-    update: {},
-    create: {
-      id: "seed-b-comanda-nina",
+  const comandaB = await prisma.comanda.create({
+    data: {
       clinicaId: clinicaB.id,
-      agendamentoId: agendamentoBId,
+      agendamentoId: agendamentoB.id,
       pacienteId: pacienteB.id,
       clienteId: clienteB.id,
       veterinarioId: usuarioB.id,
@@ -283,11 +273,8 @@ async function main() {
     },
   });
 
-  await prisma.comandaItem.upsert({
-    where: { id: "seed-b-comanda-item-consulta" },
-    update: {},
-    create: {
-      id: "seed-b-comanda-item-consulta",
+  await prisma.comandaItem.create({
+    data: {
       comandaId: comandaB.id,
       itemCatalogoId: itemCatalogoB.id,
       nomeSnapshot: itemCatalogoB.nome,

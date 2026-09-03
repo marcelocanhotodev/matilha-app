@@ -24,7 +24,7 @@ function documentoFormatado(cliente: ClienteListItem): string {
 export function ClientesTable({ clientes }: { clientes: ClienteListItem[] }) {
   const router = useRouter();
   const [clienteAberto, setClienteAberto] = useState<ClienteListItem | "novo" | null>(null);
-  const [pendenteId, setPendenteId] = useState<string | null>(null);
+  const [pendenteId, setPendenteId] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, iniciarTransicao] = useTransition();
 

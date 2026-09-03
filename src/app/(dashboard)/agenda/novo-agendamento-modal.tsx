@@ -14,13 +14,13 @@ import { criarAgendamento, type ConflitoAgendamento } from "@/lib/actions/agenda
 import { Combobox } from "@/components/combobox";
 
 export interface PacienteOpcao {
-  id: string;
+  id: number;
   nome: string;
   tutorNome: string;
 }
 
 export interface VeterinarioOpcao {
-  id: string;
+  id: number;
   nome: string;
 }
 
@@ -42,7 +42,7 @@ export function NovoAgendamentoModal({
   onSaved: () => void;
 }) {
   const [pacienteId, setPacienteId] = useState<string | null>(null);
-  const [veterinarioId, setVeterinarioId] = useState(veterinarios[0]?.id ?? "");
+  const [veterinarioId, setVeterinarioId] = useState<number | string>(veterinarios[0]?.id ?? "");
   const [itemCatalogoId, setItemCatalogoId] = useState("");
   const [data, setData] = useState(dataInicial);
   const [hora, setHora] = useState(horaInicial);
@@ -56,7 +56,7 @@ export function NovoAgendamentoModal({
   function aoEscolherServico(id: string) {
     setItemCatalogoId(id);
     setConflito(null);
-    const item = catalogo.find((i) => i.id === id);
+    const item = catalogo.find((i) => i.id === Number(id));
     if (item?.duracaoPadraoMinutos) {
       setDuracaoMinutos(String(item.duracaoPadraoMinutos));
     }
@@ -98,7 +98,7 @@ export function NovoAgendamentoModal({
     onSaved();
   }
 
-  const opcoesPaciente = pacientes.map((p) => ({ value: p.id, label: p.nome, sublabel: p.tutorNome }));
+  const opcoesPaciente = pacientes.map((p) => ({ value: String(p.id), label: p.nome, sublabel: p.tutorNome }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-pine-900/40 p-4">

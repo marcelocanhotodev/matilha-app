@@ -27,7 +27,7 @@ export function Fila({
   disabled,
 }: {
   agendamentos: AgendamentoFila[];
-  selecionadoId: string | null; // agendamentoId selecionado, ou "avulso"
+  selecionadoId: number | "avulso" | null; // agendamentoId selecionado, ou "avulso"
   onSelecionarAgendamento: (agendamento: AgendamentoFila) => void;
   onSelecionarAvulso: () => void;
   disabled: boolean;

@@ -6,9 +6,9 @@ import { describe, it, expect } from "vitest";
 import { criarAgendamentoInputSchema } from "@/lib/validators/agendamento";
 
 const payloadValido = {
-  pacienteId: "paciente-1",
-  veterinarioId: "vet-1",
-  itemCatalogoId: "item-1",
+  pacienteId: 1,
+  veterinarioId: 1,
+  itemCatalogoId: 1,
   data: "2026-09-10",
   hora: "09:00",
   duracaoMinutos: 30,

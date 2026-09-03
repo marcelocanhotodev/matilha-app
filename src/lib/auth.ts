@@ -36,7 +36,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const senhaValida = await bcrypt.compare(senha, usuario.senhaHash);
         if (!senhaValida) return null;
 
-        return { id: usuario.id, email: usuario.email, name: usuario.nome };
+        // usuario.id é Int (PK) — a sessão/JWT do Auth.js guarda ids como
+        // string por convenção (ver src/types/next-auth.d.ts), então
+        // converte aqui, na fronteira única entre Prisma e sessão.
+        return { id: String(usuario.id), email: usuario.email, name: usuario.nome };
       },
     }),
   ],

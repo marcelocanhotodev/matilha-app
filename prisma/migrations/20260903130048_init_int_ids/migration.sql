@@ -25,9 +25,12 @@ CREATE TYPE "CategoriaCatalogo" AS ENUM ('SERVICO', 'PRODUTO');
 -- CreateEnum
 CREATE TYPE "FormaPagamento" AS ENUM ('DINHEIRO', 'PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO');
 
+-- CreateEnum
+CREATE TYPE "StatusComanda" AS ENUM ('ABERTA', 'FINALIZADA', 'CANCELADA');
+
 -- CreateTable
 CREATE TABLE "clinicas" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
     "cnpj" TEXT,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -37,7 +40,7 @@ CREATE TABLE "clinicas" (
 
 -- CreateTable
 CREATE TABLE "usuarios" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "senhaHash" TEXT NOT NULL,
@@ -48,8 +51,8 @@ CREATE TABLE "usuarios" (
 
 -- CreateTable
 CREATE TABLE "usuarios_clinicas" (
-    "usuarioId" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
+    "usuarioId" INTEGER NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
     "papel" "PapelUsuario" NOT NULL,
 
     CONSTRAINT "usuarios_clinicas_pkey" PRIMARY KEY ("usuarioId","clinicaId")
@@ -57,8 +60,8 @@ CREATE TABLE "usuarios_clinicas" (
 
 -- CreateTable
 CREATE TABLE "clientes" (
-    "id" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
     "tipo" "TipoPessoa" NOT NULL,
     "nome" TEXT NOT NULL,
     "cpf" TEXT,
@@ -74,6 +77,7 @@ CREATE TABLE "clientes" (
     "bairro" TEXT,
     "cidade" TEXT,
     "uf" TEXT,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "clientes_pkey" PRIMARY KEY ("id")
@@ -81,9 +85,9 @@ CREATE TABLE "clientes" (
 
 -- CreateTable
 CREATE TABLE "pacientes" (
-    "id" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
-    "clienteId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
+    "clienteId" INTEGER NOT NULL,
     "nome" TEXT NOT NULL,
     "especie" "Especie" NOT NULL,
     "raca" TEXT NOT NULL,
@@ -95,6 +99,7 @@ CREATE TABLE "pacientes" (
     "castrado" "StatusCastracao" NOT NULL DEFAULT 'NAO_INFORMADO',
     "microchip" TEXT,
     "observacoes" TEXT,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "pacientes_pkey" PRIMARY KEY ("id")
@@ -102,25 +107,26 @@ CREATE TABLE "pacientes" (
 
 -- CreateTable
 CREATE TABLE "itens_catalogo" (
-    "id" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
     "nome" TEXT NOT NULL,
     "categoria" "CategoriaCatalogo" NOT NULL,
     "preco" DECIMAL(10,2) NOT NULL,
     "icone" TEXT,
     "ativo" BOOLEAN NOT NULL DEFAULT true,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "duracaoPadraoMinutos" INTEGER,
 
     CONSTRAINT "itens_catalogo_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "agendamentos" (
-    "id" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
-    "pacienteId" TEXT NOT NULL,
-    "veterinarioId" TEXT NOT NULL,
-    "itemCatalogoId" TEXT,
+    "id" SERIAL NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
+    "pacienteId" INTEGER NOT NULL,
+    "veterinarioId" INTEGER NOT NULL,
+    "itemCatalogoId" INTEGER,
     "dataHoraInicio" TIMESTAMP(3) NOT NULL,
     "duracaoMinutos" INTEGER NOT NULL DEFAULT 60,
     "status" "StatusAgendamento" NOT NULL DEFAULT 'AGUARDANDO',
@@ -132,16 +138,18 @@ CREATE TABLE "agendamentos" (
 
 -- CreateTable
 CREATE TABLE "comandas" (
-    "id" TEXT NOT NULL,
-    "clinicaId" TEXT NOT NULL,
-    "agendamentoId" TEXT,
-    "pacienteId" TEXT,
-    "clienteId" TEXT,
-    "veterinarioId" TEXT,
-    "subtotal" DECIMAL(10,2) NOT NULL,
+    "id" SERIAL NOT NULL,
+    "clinicaId" INTEGER NOT NULL,
+    "agendamentoId" INTEGER,
+    "pacienteId" INTEGER,
+    "clienteId" INTEGER,
+    "veterinarioId" INTEGER,
+    "subtotal" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "desconto" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "total" DECIMAL(10,2) NOT NULL,
-    "formaPagamento" "FormaPagamento" NOT NULL,
+    "total" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "formaPagamento" "FormaPagamento",
+    "status" "StatusComanda" NOT NULL DEFAULT 'ABERTA',
+    "motivoCancelamento" TEXT,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "comandas_pkey" PRIMARY KEY ("id")
@@ -149,9 +157,9 @@ CREATE TABLE "comandas" (
 
 -- CreateTable
 CREATE TABLE "comanda_itens" (
-    "id" TEXT NOT NULL,
-    "comandaId" TEXT NOT NULL,
-    "itemCatalogoId" TEXT,
+    "id" SERIAL NOT NULL,
+    "comandaId" INTEGER NOT NULL,
+    "itemCatalogoId" INTEGER,
     "nomeSnapshot" TEXT NOT NULL,
     "precoSnapshot" DECIMAL(10,2) NOT NULL,
     "quantidade" INTEGER NOT NULL DEFAULT 1,

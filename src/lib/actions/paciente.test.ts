@@ -18,18 +18,15 @@ const { criarPaciente, editarPaciente, inativarPaciente, reativarPaciente } = aw
 );
 
 describe("Server Actions de Paciente", () => {
-  const clinicaAId = "test-paciente-action-clinica-a";
-  const clinicaBId = "test-paciente-action-clinica-b";
-  let clienteAId: string;
+  let clinicaAId: number;
+  let clinicaBId: number;
+  let clienteAId: number;
 
   beforeAll(async () => {
-    await prisma.clinica.createMany({
-      data: [
-        { id: clinicaAId, nome: "Test Paciente Action Clínica A" },
-        { id: clinicaBId, nome: "Test Paciente Action Clínica B" },
-      ],
-      skipDuplicates: true,
-    });
+    const clinicaA = await prisma.clinica.create({ data: { nome: "Test Paciente Action Clínica A" } });
+    const clinicaB = await prisma.clinica.create({ data: { nome: "Test Paciente Action Clínica B" } });
+    clinicaAId = clinicaA.id;
+    clinicaBId = clinicaB.id;
 
     const clienteA = await prisma.cliente.create({
       data: {
@@ -51,7 +48,7 @@ describe("Server Actions de Paciente", () => {
     });
     await prisma.comanda.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
     await prisma.usuario.deleteMany({
-      where: { id: { in: comandas.map((c) => c.veterinarioId).filter((id): id is string => !!id) } },
+      where: { id: { in: comandas.map((c) => c.veterinarioId).filter((id): id is number => !!id) } },
     });
     await prisma.paciente.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
     await prisma.cliente.deleteMany({ where: { clinicaId: { in: [clinicaAId, clinicaBId] } } });
@@ -59,7 +56,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it("criarPaciente cria o paciente na clinicaId ativa da sessão (task 3.1)", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const resultado = await criarPaciente({
       clienteId: clienteAId,
@@ -79,7 +76,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it('Scenario "Nenhum cliente cadastrado ainda" — clienteId inexistente é rejeitado (task 3.2)', async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const resultado = await criarPaciente({
       clienteId: "cliente-que-nao-existe",
@@ -94,7 +91,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it("criarPaciente rejeita clienteId de outra clínica, mesmo passando o ID direto (isolamento, task 3.2)", async () => {
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const clienteB = await prisma.cliente.create({
       data: {
         clinicaId: clinicaBId,
@@ -105,7 +102,7 @@ describe("Server Actions de Paciente", () => {
     });
 
     // Sessão ativa é A, mas o clienteId passado pertence a B.
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultado = await criarPaciente({
       clienteId: clienteB.id,
       nome: "Mimi",
@@ -118,7 +115,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it("criarPaciente rejeita clienteId de um cliente inativo (task 3.2)", async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const clienteInativo = await prisma.cliente.create({
       data: {
         clinicaId: clinicaAId,
@@ -141,7 +138,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it('Scenario "Inativar paciente com agendamentos e comandas vinculados" (task 3.3)', async () => {
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
 
     const criado = await criarPaciente({
       clienteId: clienteAId,
@@ -184,7 +181,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it("inativarPaciente não afeta paciente de outra clínica, mesmo passando o ID direto (isolamento, task 3.1)", async () => {
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const clienteB = await prisma.cliente.create({
       data: {
         clinicaId: clinicaBId,
@@ -205,7 +202,7 @@ describe("Server Actions de Paciente", () => {
     });
 
     // Sessão ativa é A, mas o ID passado pertence a B.
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultado = await inativarPaciente(pacienteDaClinicaB.id);
 
     expect(resultado.ok).toBe(false);
@@ -214,7 +211,7 @@ describe("Server Actions de Paciente", () => {
   });
 
   it("editarPaciente não edita paciente de outra clínica, mesmo passando o ID direto (isolamento, task 3.1)", async () => {
-    clinicaAtivaMock.current = clinicaBId;
+    clinicaAtivaMock.current = String(clinicaBId);
     const clienteB = await prisma.cliente.create({
       data: {
         clinicaId: clinicaBId,
@@ -234,7 +231,7 @@ describe("Server Actions de Paciente", () => {
       },
     });
 
-    clinicaAtivaMock.current = clinicaAId;
+    clinicaAtivaMock.current = String(clinicaAId);
     const resultado = await editarPaciente(pacienteDaClinicaB.id, {
       clienteId: clienteB.id,
       nome: "Nome Alterado Indevidamente",

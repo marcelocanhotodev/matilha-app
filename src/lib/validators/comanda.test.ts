@@ -11,22 +11,22 @@ import {
 
 describe("itemCarrinhoInputSchema", () => {
   it("quantidade zero é rejeitada", () => {
-    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: "item-1", quantidade: 0 });
+    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: 1, quantidade: 0 });
     expect(parse.success).toBe(false);
   });
 
   it("quantidade negativa é rejeitada", () => {
-    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: "item-1", quantidade: -2 });
+    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: 1, quantidade: -2 });
     expect(parse.success).toBe(false);
   });
 
   it("quantidade fracionária é rejeitada", () => {
-    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: "item-1", quantidade: 1.5 });
+    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: 1, quantidade: 1.5 });
     expect(parse.success).toBe(false);
   });
 
   it("payload válido é aceito", () => {
-    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: "item-1", quantidade: 2 });
+    const parse = itemCarrinhoInputSchema.safeParse({ itemCatalogoId: 1, quantidade: 2 });
     expect(parse.success).toBe(true);
   });
 });

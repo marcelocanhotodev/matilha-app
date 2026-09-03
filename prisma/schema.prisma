@@ -5,6 +5,10 @@
 // Toda tabela de negócio carrega `clinicaId` e um índice sobre ela.
 // Ver openspec/project.md e openspec/specs/autenticacao-multi-clinica/spec.md
 // para a regra de isolamento entre clínicas.
+//
+// IDs: toda PK é Int autoincrement (equivalente Postgres de
+// INT NOT NULL IDENTITY) — nunca cuid/uuid. Ver openspec/changes/... (troca
+// de ids string->int) para o histórico da decisão.
 // ============================================================================
 
 generator client {
@@ -90,7 +94,7 @@ enum StatusComanda {
 // ---------------------------------------------------------------------------
 
 model Clinica {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   nome      String
   cnpj      String?
   criadoEm  DateTime @default(now())
@@ -106,7 +110,7 @@ model Clinica {
 }
 
 model Usuario {
-  id           String   @id @default(cuid())
+  id           Int      @id @default(autoincrement())
   nome         String
   email        String   @unique
   senhaHash    String
@@ -123,8 +127,8 @@ model Usuario {
 /// dentro de cada clínica (um mesmo usuário pode ter papéis diferentes em
 /// clínicas diferentes).
 model UsuarioClinica {
-  usuarioId String
-  clinicaId String
+  usuarioId Int
+  clinicaId Int
   papel     PapelUsuario
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -140,8 +144,8 @@ model UsuarioClinica {
 // ---------------------------------------------------------------------------
 
 model Cliente {
-  id        String     @id @default(cuid())
-  clinicaId String
+  id        Int        @id @default(autoincrement())
+  clinicaId Int
   tipo      TipoPessoa
 
   // Identificação — pessoa física
@@ -188,9 +192,9 @@ model Cliente {
 // ---------------------------------------------------------------------------
 
 model Paciente {
-  id        String  @id @default(cuid())
-  clinicaId String
-  clienteId String
+  id        Int     @id @default(autoincrement())
+  clinicaId Int
+  clienteId Int
 
   nome       String
   especie    Especie
@@ -227,8 +231,8 @@ model Paciente {
 // ---------------------------------------------------------------------------
 
 model ItemCatalogo {
-  id        String            @id @default(cuid())
-  clinicaId String
+  id        Int               @id @default(autoincrement())
+  clinicaId Int
   nome      String
   categoria CategoriaCatalogo
   preco     Decimal           @db.Decimal(10, 2)
@@ -255,11 +259,11 @@ model ItemCatalogo {
 // ---------------------------------------------------------------------------
 
 model Agendamento {
-  id        String            @id @default(cuid())
-  clinicaId String
-  pacienteId String
-  veterinarioId String
-  itemCatalogoId String?      // serviço previsto (pode ser nulo/livre)
+  id        Int               @id @default(autoincrement())
+  clinicaId Int
+  pacienteId Int
+  veterinarioId Int
+  itemCatalogoId Int?         // serviço previsto (pode ser nulo/livre)
 
   dataHoraInicio DateTime
   duracaoMinutos Int          @default(60)
@@ -285,12 +289,12 @@ model Agendamento {
 // ---------------------------------------------------------------------------
 
 model Comanda {
-  id             String   @id @default(cuid())
-  clinicaId      String
-  agendamentoId  String?  @unique // null = atendimento avulso
-  pacienteId     String?
-  clienteId      String?
-  veterinarioId  String?
+  id             Int      @id @default(autoincrement())
+  clinicaId      Int
+  agendamentoId  Int?     @unique // null = atendimento avulso
+  pacienteId     Int?
+  clienteId      Int?
+  veterinarioId  Int?
 
   subtotal       Decimal  @db.Decimal(10, 2) @default(0)
   desconto       Decimal  @db.Decimal(10, 2) @default(0)
@@ -323,9 +327,9 @@ model Comanda {
 /// preço do ItemCatalogo no momento da venda — NUNCA uma referência viva ao
 /// preço atual, para que alterar o catálogo não altere vendas já fechadas.
 model ComandaItem {
-  id             String  @id @default(cuid())
-  comandaId      String
-  itemCatalogoId String?
+  id             Int     @id @default(autoincrement())
+  comandaId      Int
+  itemCatalogoId Int?
 
   nomeSnapshot  String
   precoSnapshot Decimal @db.Decimal(10, 2)

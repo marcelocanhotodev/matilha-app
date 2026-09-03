@@ -81,7 +81,7 @@ function estadoInicial(paciente: PacienteListItem | null, clienteIdPadrao: strin
   const racaConhecida = BREEDS[especie].includes(paciente.raca);
 
   return {
-    clienteId: paciente.clienteId,
+    clienteId: String(paciente.clienteId),
     nome: paciente.nome,
     especie,
     racaSelect: racaConhecida ? paciente.raca : ultimaRaca(especie),
@@ -108,7 +108,9 @@ export function PacienteModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<FormState>(() => estadoInicial(paciente, clientesAtivos[0]?.id ?? ""));
+  const [form, setForm] = useState<FormState>(() =>
+    estadoInicial(paciente, clientesAtivos[0] ? String(clientesAtivos[0].id) : ""),
+  );
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -175,7 +177,7 @@ export function PacienteModal({
         <form onSubmit={aoSalvar} className="flex flex-col gap-4">
           <Campo label="Tutor">
             <Combobox
-              options={clientesAtivos.map((c) => ({ value: c.id, label: c.nome }))}
+              options={clientesAtivos.map((c) => ({ value: String(c.id), label: c.nome }))}
               value={form.clienteId || null}
               onChange={(valor) => set("clienteId", valor)}
               placeholder="Selecionar tutor..."

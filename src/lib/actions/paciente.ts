@@ -22,7 +22,7 @@ import { pacienteInputSchema, type PacienteInput } from "@/lib/validators/pacien
 export interface SalvarPacienteResultado {
   ok: boolean;
   erro?: string;
-  pacienteId?: string;
+  pacienteId?: number;
 }
 
 export interface ToggleAtivoResultado {
@@ -56,7 +56,7 @@ function paraDadosPrisma(dados: PacienteInput) {
  * (Requirement "Vínculo obrigatório com um cliente existente") — verifica
  * que o `clienteId` informado existe, está ativo e pertence à mesma
  * clínica, nunca confiando num ID vindo do client sem checagem. */
-async function clienteValido(clinicaId: string, clienteId: string): Promise<boolean> {
+async function clienteValido(clinicaId: number, clienteId: number): Promise<boolean> {
   const cliente = await prisma.cliente.findFirst({
     where: { id: clienteId, clinicaId, ativo: true },
     select: { id: true },
@@ -84,7 +84,7 @@ export async function criarPaciente(dadosBrutos: unknown): Promise<SalvarPacient
   return { ok: true, pacienteId: paciente.id };
 }
 
-export async function editarPaciente(pacienteId: string, dadosBrutos: unknown): Promise<SalvarPacienteResultado> {
+export async function editarPaciente(pacienteId: number, dadosBrutos: unknown): Promise<SalvarPacienteResultado> {
   const clinicaId = await getClinicaAtual();
 
   const existente = await prisma.paciente.findFirst({ where: { id: pacienteId, clinicaId } });
@@ -113,7 +113,7 @@ export async function editarPaciente(pacienteId: string, dadosBrutos: unknown): 
   return { ok: true, pacienteId };
 }
 
-async function alterarAtivo(pacienteId: string, ativo: boolean): Promise<ToggleAtivoResultado> {
+async function alterarAtivo(pacienteId: number, ativo: boolean): Promise<ToggleAtivoResultado> {
   const clinicaId = await getClinicaAtual();
 
   // `updateMany` com `clinicaId` no `where` (em vez de `update({ where: { id
@@ -132,13 +132,13 @@ async function alterarAtivo(pacienteId: string, ativo: boolean): Promise<ToggleA
   return { ok: true };
 }
 
-export async function inativarPaciente(pacienteId: string): Promise<ToggleAtivoResultado> {
+export async function inativarPaciente(pacienteId: number): Promise<ToggleAtivoResultado> {
   // Sem nenhuma checagem de vínculo com Agendamento/Comanda: inativar nunca
   // apaga nem desvincula dado nenhum, então não há nada a bloquear (ver
   // Requirement "Inativação lógica de paciente").
   return alterarAtivo(pacienteId, false);
 }
 
-export async function reativarPaciente(pacienteId: string): Promise<ToggleAtivoResultado> {
+export async function reativarPaciente(pacienteId: number): Promise<ToggleAtivoResultado> {
   return alterarAtivo(pacienteId, true);
 }

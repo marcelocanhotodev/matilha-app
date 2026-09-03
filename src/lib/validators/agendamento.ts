@@ -12,9 +12,15 @@ const REGEX_HORA = /^\d{2}:\d{2}$/;
 
 export const criarAgendamentoInputSchema = z
   .object({
-    pacienteId: z.string({ required_error: "Paciente é obrigatório." }).min(1, "Paciente é obrigatório."),
-    veterinarioId: z.string({ required_error: "Veterinário é obrigatório." }).min(1, "Veterinário é obrigatório."),
-    itemCatalogoId: z.string().min(1).optional(),
+    pacienteId: z.coerce
+      .number({ required_error: "Paciente é obrigatório.", invalid_type_error: "Paciente é obrigatório." })
+      .int()
+      .positive("Paciente é obrigatório."),
+    veterinarioId: z.coerce
+      .number({ required_error: "Veterinário é obrigatório.", invalid_type_error: "Veterinário é obrigatório." })
+      .int()
+      .positive("Veterinário é obrigatório."),
+    itemCatalogoId: z.coerce.number().int().positive().optional(),
     // `data`+`hora` chegam separados (não uma string de datetime já
     // combinada) — a combinação num instante real acontece aqui, sempre
     // interpretada no fuso da clínica via `paraInstanteClinica` (ver

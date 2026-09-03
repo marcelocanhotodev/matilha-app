@@ -25,7 +25,7 @@ function duracaoFormatada(duracaoPadraoMinutos: ItemCatalogo["duracaoPadraoMinut
 export function CatalogoTable({ itens }: { itens: ItemCatalogo[] }) {
   const router = useRouter();
   const [itemAberto, setItemAberto] = useState<ItemCatalogo | "novo" | null>(null);
-  const [pendenteId, setPendenteId] = useState<string | null>(null);
+  const [pendenteId, setPendenteId] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, iniciarTransicao] = useTransition();
 

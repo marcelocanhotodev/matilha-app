@@ -23,12 +23,17 @@ export class SemClinicaAtivaError extends Error {
  * ser tratado pela camada de UI redirecionando para a tela de seleção de
  * clínica, nunca silenciosamente ignorado.
  *
+ * A sessão/JWT guarda `clinicaAtivaId` como string (padrão do Auth.js — ver
+ * src/types/next-auth.d.ts) mas a PK de Clinica é Int; esta função é o único
+ * ponto de conversão string->number, então todo o resto do código de negócio
+ * já recebe um `number` pronto.
+ *
  * Uso esperado em toda query de dados de negócio:
  *
  *   const clinicaId = await getClinicaAtual();
  *   const pacientes = await prisma.paciente.findMany({ where: { clinicaId } });
  */
-export async function getClinicaAtual(): Promise<string> {
+export async function getClinicaAtual(): Promise<number> {
   const session = await auth();
   const clinicaId = session?.user?.clinicaAtivaId;
 
@@ -36,5 +41,5 @@ export async function getClinicaAtual(): Promise<string> {
     throw new SemClinicaAtivaError();
   }
 
-  return clinicaId;
+  return Number(clinicaId);
 }
