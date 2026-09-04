@@ -94,7 +94,12 @@ describe("Server Actions de ItemCatalogo", () => {
         clinicaId: clinicaAId,
         tipo: "FISICA",
         nome: "Marina Silva",
-        email: `marina-${itemCatalogoId}@teste.matilha`,
+        // Date.now() (não itemCatalogoId) garante unicidade do e-mail —
+        // itemCatalogoId vem da sequência própria de ItemCatalogo, que pode
+        // coincidir com o id de outra tabela (ex.: Paciente em
+        // paciente.test.ts) e colidir na constraint única quando os
+        // arquivos rodam em paralelo. Mesmo padrão do resto da suíte.
+        email: `marina-catalogo-${Date.now()}@teste.matilha`,
       },
     });
     const paciente = await prisma.paciente.create({
@@ -108,7 +113,7 @@ describe("Server Actions de ItemCatalogo", () => {
       },
     });
     const veterinario = await prisma.usuario.create({
-      data: { nome: "Vet Teste", email: `vet-${itemCatalogoId}@teste.matilha`, senhaHash: "x" },
+      data: { nome: "Vet Teste", email: `vet-catalogo-${Date.now()}@teste.matilha`, senhaHash: "x" },
     });
     const agendamento = await prisma.agendamento.create({
       data: {

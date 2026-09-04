@@ -150,7 +150,12 @@ describe("Server Actions de Paciente", () => {
     const pacienteId = criado.pacienteId!;
 
     const usuario = await prisma.usuario.create({
-      data: { nome: "Vet Teste", email: `vet-${pacienteId}@teste.matilha`, senhaHash: "x" },
+      // Date.now() (não pacienteId) garante unicidade do e-mail — pacienteId
+      // vem da sequência própria de Paciente, que pode coincidir com o id
+      // de outra tabela (ex.: ItemCatalogo em item-catalogo.test.ts) e
+      // colidir na constraint única de Usuario.email quando os arquivos
+      // rodam em paralelo. Mesmo padrão do resto da suíte.
+      data: { nome: "Vet Teste", email: `vet-paciente-${Date.now()}@teste.matilha`, senhaHash: "x" },
     });
     const comanda = await prisma.comanda.create({
       data: {
