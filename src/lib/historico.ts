@@ -24,21 +24,39 @@ export interface ListaHistorico {
   totalPaginas: number;
 }
 
+/** Intervalo de datas (ambas inclusive), já resolvido em `Date` pelo
+ * caller — nunca strings cruas chegam até aqui (ver
+ * openspec/changes/adicionar-filtro-periodo-historico/design.md,
+ * Decisão do helper `paraDiaCalendarioDeChave`). Filtra pelo mesmo campo
+ * que já ordena a listagem (Requirement: Listagem de comandas
+ * finalizadas) — `Comanda` não tem um campo separado de "finalizado em". */
+export interface PeriodoHistorico {
+  inicio: Date;
+  fim: Date;
+}
+
 /**
  * Requirement "Listagem de comandas finalizadas": página da listagem, mais
  * recentes primeiro. `totalPaginas` vem de um `count()` sobre o mesmo
  * `where` — página além do total simplesmente retorna `comandas: []` (skip
- * maior que o total de linhas não é erro pro Prisma).
+ * maior que o total de linhas não é erro pro Prisma). Com `periodo`,
+ * Requirement "Filtro por período" — sem ele, comportamento idêntico ao
+ * histórico inteiro.
  */
 export async function listarHistorico(
   clinicaId: number,
-  { page, porPagina }: { page: number; porPagina: number }
+  { page, porPagina, periodo }: { page: number; porPagina: number; periodo?: PeriodoHistorico }
 ): Promise<ListaHistorico> {
   const skip = (page - 1) * porPagina;
+  const where = {
+    clinicaId,
+    status: "FINALIZADA" as const,
+    ...(periodo ? { criadoEm: { gte: periodo.inicio, lte: periodo.fim } } : {}),
+  };
 
   const [comandas, total] = await Promise.all([
     prisma.comanda.findMany({
-      where: { clinicaId, status: "FINALIZADA" },
+      where,
       orderBy: { criadoEm: "desc" },
       skip,
       take: porPagina,
@@ -47,7 +65,7 @@ export async function listarHistorico(
         cliente: { select: { nome: true } },
       },
     }),
-    prisma.comanda.count({ where: { clinicaId, status: "FINALIZADA" } }),
+    prisma.comanda.count({ where }),
   ]);
 
   return {
@@ -84,14 +102,21 @@ const ORDEM_FORMA_PAGAMENTO = ["DINHEIRO", "PIX", "CARTAO_CREDITO", "CARTAO_DEBI
  * estatísticas sobre TODAS as comandas finalizadas da clínica, nunca só a
  * página visível (ver design.md, Decisão "Totais agregados são uma query
  * separada") — senão ticket médio e forma mais usada mudariam a cada página.
+ * Com `periodo`, os totais são só sobre o período (Requirement "Totais
+ * agregados", cenário "Totais recalculados pelo período ativo"); sem
+ * `periodo`, sobre o histórico inteiro.
  *
  * "Forma mais frequente" é contagem de comandas por forma de pagamento (a
  * mais usada), não soma de valor — diferente de
  * `faturamentoPorFormaPagamento` (painel-analitico.ts).
  */
-export async function totaisHistorico(clinicaId: number): Promise<TotaisHistorico> {
+export async function totaisHistorico(clinicaId: number, periodo?: PeriodoHistorico): Promise<TotaisHistorico> {
   const comandas = await prisma.comanda.findMany({
-    where: { clinicaId, status: "FINALIZADA" },
+    where: {
+      clinicaId,
+      status: "FINALIZADA",
+      ...(periodo ? { criadoEm: { gte: periodo.inicio, lte: periodo.fim } } : {}),
+    },
     select: { total: true, formaPagamento: true },
   });
 

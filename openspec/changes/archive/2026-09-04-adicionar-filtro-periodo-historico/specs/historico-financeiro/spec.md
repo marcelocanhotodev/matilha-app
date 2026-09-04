@@ -1,14 +1,4 @@
-# Histórico financeiro
-
-## Purpose
-
-> Referência visual: `openspec/reference/prototipo.html`, seção `#historico`.
-
-
-Consulta agregada sobre as comandas já finalizadas: total arrecadado,
-quantidade de atendimentos, ticket médio e forma de pagamento mais usada.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Listagem de comandas finalizadas
 O sistema SHALL listar as comandas finalizadas da clínica ativa dentro do
@@ -29,60 +19,6 @@ detalhes do atendimento).
 - **THEN** a linha mostra horário, pet/tutor, forma de pagamento e total,
   sem listar os itens individualmente
 
-### Requirement: Tela de detalhes do atendimento
-O sistema SHALL oferecer uma tela de detalhes, somente leitura, para cada
-comanda finalizada, endereçável por uma URL própria contendo o id da
-comanda. A tela SHALL mostrar: data/hora, pet, tutor, veterinário(a),
-origem (agendamento vinculado, com horário, ou atendimento avulso), a lista
-completa de itens vendidos (nome, quantidade, preço unitário, subtotal),
-subtotal, desconto, total e forma de pagamento. Campos opcionais sem valor
-(pet, tutor ou veterinário ausentes) SHALL ser exibidos como "—", nunca
-omitidos ou causando erro.
-
-#### Scenario: Acessar o detalhe de uma comanda finalizada
-- **GIVEN** uma comanda finalizada da clínica ativa, com 2 itens
-- **WHEN** o usuário acessa a URL de detalhe dessa comanda
-- **THEN** a tela mostra os 2 itens (nome, quantidade, preço unitário,
-  subtotal), o subtotal/desconto/total e a forma de pagamento
-
-#### Scenario: Comanda sem paciente vinculado
-- **GIVEN** uma comanda finalizada avulsa, sem `pacienteId`
-- **WHEN** o usuário acessa a tela de detalhe
-- **THEN** o campo de pet é exibido como "—", sem erro
-
-#### Scenario: Comanda de outra clínica não é acessível pela URL
-- **GIVEN** um usuário autenticado na Clínica A
-- **WHEN** ele acessa a URL de detalhe de uma comanda que pertence à
-  Clínica B
-- **THEN** o sistema responde como se a comanda não existisse (404), nunca
-  um erro de acesso negado (403) — mesmo padrão de isolamento usado no
-  resto do projeto
-
-#### Scenario: Comanda não finalizada não é acessível pela URL
-- **GIVEN** uma comanda `ABERTA` ou `CANCELADA` da clínica ativa
-- **WHEN** o usuário acessa a URL de detalhe dessa comanda
-- **THEN** o sistema responde como se ela não existisse (404) — histórico
-  só cobre comandas finalizadas
-
-### Requirement: Paginação configurável do histórico
-O sistema SHALL paginar a listagem de comandas finalizadas, com o número de
-itens por página definido por clínica. Cada clínica SHALL ter um valor
-próprio, com padrão de 10 quando não definido explicitamente. Não há tela
-de configuração para esse valor nesta capability — ele é alterado
-diretamente no banco de dados.
-
-#### Scenario: Página respeita o tamanho configurado da clínica
-- **GIVEN** uma clínica configurada para 10 itens por página, com 25
-  comandas finalizadas
-- **WHEN** o usuário abre a primeira página do histórico
-- **THEN** a lista mostra 10 comandas, e a navegação indica 3 páginas no
-  total
-
-#### Scenario: Clínica sem valor configurado usa o padrão
-- **GIVEN** uma clínica que nunca teve o tamanho de página alterado
-- **WHEN** o histórico é exibido
-- **THEN** a paginação usa 10 itens por página
-
 ### Requirement: Totais agregados
 O sistema SHALL calcular, a partir das comandas finalizadas dentro do
 período ativo (ou de todo o histórico, quando nenhum filtro de período
@@ -101,6 +37,16 @@ ticket médio (total / quantidade) e a forma de pagamento mais frequente.
 - **WHEN** o filtro é aplicado
 - **THEN** os 4 cards mostram os totais só das comandas dentro do
   período, não do histórico inteiro
+
+## REMOVED Requirements
+
+### Requirement: Filtro por período (evolução futura)
+**Reason**: Substituída por uma Requirement real e testável ("Filtro por
+período") agora que esta change a implementa.
+**Migration**: N/A — nunca foi implementada, não existe comportamento em
+produção para migrar.
+
+## ADDED Requirements
 
 ### Requirement: Filtro por período
 O sistema SHALL permitir filtrar o histórico por um intervalo de datas

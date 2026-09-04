@@ -69,6 +69,36 @@ export function paraChaveDeData({ ano, mes, dia }: DiaCalendario): string {
   return `${ano}-${doisDigitos(mes)}-${doisDigitos(dia)}`;
 }
 
+/** Inverso de `paraChaveDeData`: parseia uma string `yyyy-mm-dd` (ex.:
+ * vinda de `<input type="date">` ou de `searchParams`) para
+ * `DiaCalendario`, sem depender de `new Date(string)` (regra do módulo —
+ * ver cabeçalho). Retorna `null` pra qualquer coisa que não seja uma data
+ * de calendário válida: string vazia/malformada, ou uma data inexistente
+ * (ex.: 31 de fevereiro) — nunca lança, o chamador decide o que fazer com
+ * `null` (ex.: tratar como "sem filtro"). */
+export function paraDiaCalendarioDeChave(chave: string): DiaCalendario | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(chave);
+  if (!match) return null;
+
+  const ano = Number(match[1]);
+  const mes = Number(match[2]);
+  const dia = Number(match[3]);
+
+  // Confere que a data "volta" exatamente igual depois de normalizada em
+  // UTC — pega tanto componentes fora de faixa (mes: 13, dia: 32) quanto
+  // datas que não existem no calendário (ex.: 2026-02-30).
+  const normalizado = new Date(Date.UTC(ano, mes - 1, dia));
+  if (
+    normalizado.getUTCFullYear() !== ano ||
+    normalizado.getUTCMonth() !== mes - 1 ||
+    normalizado.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+
+  return { ano, mes, dia };
+}
+
 /** `HH:mm` no fuso da clínica. */
 export function paraChaveDeHora({ hora, minuto }: ComponentesClinica): string {
   return `${doisDigitos(hora)}:${doisDigitos(minuto)}`;

@@ -7,6 +7,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { buscarComandaFinalizada, listarHistorico, totaisHistorico } from "@/lib/historico";
+import { fimDoDiaClinica, inicioDoDiaClinica } from "@/lib/timezone";
+
+// comandaAvulsaId (ver beforeAll) tem criadoEm fixado em 2026-01-01;
+// comandaComVinculoId fica em "agora" (data de quando o teste roda) — os
+// testes de período abaixo usam esses dois dias já existentes pra isolar
+// um subconjunto, sem precisar de fixtures extras.
+const DIA_AVULSA = { ano: 2026, mes: 1, dia: 1 };
+const DIA_SEM_COMANDAS = { ano: 2026, mes: 2, dia: 1 };
 
 describe("historico", () => {
   let clinicaId: number;
@@ -191,6 +199,20 @@ describe("historico", () => {
       expect(resultado.comandas).toEqual([]);
       expect(resultado.totalPaginas).toBe(1);
     });
+
+    it("período filtra a listagem pro intervalo (inclusive)", async () => {
+      const periodo = { inicio: inicioDoDiaClinica(DIA_AVULSA), fim: fimDoDiaClinica(DIA_AVULSA) };
+      const resultado = await listarHistorico(clinicaId, { page: 1, porPagina: 10, periodo });
+      expect(resultado.comandas.map((c) => c.id)).toEqual([comandaAvulsaId]);
+      expect(resultado.totalPaginas).toBe(1);
+    });
+
+    it("período sem nenhuma comanda dentro dele -> lista vazia, sem erro", async () => {
+      const periodo = { inicio: inicioDoDiaClinica(DIA_SEM_COMANDAS), fim: fimDoDiaClinica(DIA_SEM_COMANDAS) };
+      const resultado = await listarHistorico(clinicaId, { page: 1, porPagina: 10, periodo });
+      expect(resultado.comandas).toEqual([]);
+      expect(resultado.totalPaginas).toBe(1);
+    });
   });
 
   describe("totaisHistorico", () => {
@@ -229,6 +251,18 @@ describe("historico", () => {
         await prisma.comanda.deleteMany({ where: { clinicaId: clinicaEmpate.id } });
         await prisma.clinica.delete({ where: { id: clinicaEmpate.id } });
       }
+    });
+
+    it("período recalcula os totais só sobre o intervalo", async () => {
+      const periodo = { inicio: inicioDoDiaClinica(DIA_AVULSA), fim: fimDoDiaClinica(DIA_AVULSA) };
+      const resultado = await totaisHistorico(clinicaId, periodo);
+      expect(resultado).toEqual({ arrecadado: 50, quantidade: 1, ticketMedio: 50, formaMaisFrequente: "PIX" });
+    });
+
+    it("período sem nenhuma comanda dentro dele -> tudo zero/null", async () => {
+      const periodo = { inicio: inicioDoDiaClinica(DIA_SEM_COMANDAS), fim: fimDoDiaClinica(DIA_SEM_COMANDAS) };
+      const resultado = await totaisHistorico(clinicaId, periodo);
+      expect(resultado).toEqual({ arrecadado: 0, quantidade: 0, ticketMedio: null, formaMaisFrequente: null });
     });
   });
 });

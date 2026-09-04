@@ -11,6 +11,7 @@ import {
   paraChaveDeHora,
   paraComponentesClinica,
   paraDiaCalendario,
+  paraDiaCalendarioDeChave,
   paraInstanteClinica,
   segundaFeiraDaSemana,
 } from "@/lib/timezone";
@@ -77,6 +78,32 @@ describe("aritmética de calendário (adicionarDias, diaDaSemana, segundaFeiraDa
 
   it("paraChaveDeData formata yyyy-mm-dd com dois dígitos", () => {
     expect(paraChaveDeData({ ano: 2026, mes: 9, dia: 3 })).toBe("2026-09-03");
+  });
+});
+
+describe("paraDiaCalendarioDeChave", () => {
+  it("parseia uma string yyyy-mm-dd válida", () => {
+    expect(paraDiaCalendarioDeChave("2026-09-03")).toEqual({ ano: 2026, mes: 9, dia: 3 });
+  });
+
+  it("string vazia retorna null", () => {
+    expect(paraDiaCalendarioDeChave("")).toBeNull();
+  });
+
+  it("string malformada retorna null", () => {
+    expect(paraDiaCalendarioDeChave("03/09/2026")).toBeNull();
+    expect(paraDiaCalendarioDeChave("2026-9-3")).toBeNull();
+    expect(paraDiaCalendarioDeChave("abacate")).toBeNull();
+  });
+
+  it("data inexistente no calendário retorna null", () => {
+    expect(paraDiaCalendarioDeChave("2026-02-30")).toBeNull(); // fevereiro não tem dia 30
+    expect(paraDiaCalendarioDeChave("2026-13-01")).toBeNull(); // mês 13 não existe
+  });
+
+  it("roundtrip com paraChaveDeData pra uma data válida", () => {
+    const chave = "2026-12-31";
+    expect(paraChaveDeData(paraDiaCalendarioDeChave(chave)!)).toBe(chave);
   });
 });
 
