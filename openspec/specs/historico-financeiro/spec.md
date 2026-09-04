@@ -1,6 +1,6 @@
 # Histórico financeiro
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#historico`.
 

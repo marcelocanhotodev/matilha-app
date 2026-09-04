@@ -1,6 +1,6 @@
 # Catálogo de produtos e serviços
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#cadastro`.
 

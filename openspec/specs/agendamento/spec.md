@@ -1,6 +1,6 @@
 # Agendamento
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#agenda`.
 

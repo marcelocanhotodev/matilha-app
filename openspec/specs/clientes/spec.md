@@ -1,6 +1,6 @@
 # Cadastro de clientes (tutores)
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#clientes`.
 

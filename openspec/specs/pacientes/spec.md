@@ -1,6 +1,6 @@
 # Cadastro de pacientes (animais)
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#pacientes`.
 

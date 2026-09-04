@@ -1,6 +1,6 @@
 # Autenticação e acesso multi-clínica
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#auth-screen (login) — abre automaticamente ao carregar o arquivo`.
 

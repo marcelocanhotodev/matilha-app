@@ -1,6 +1,6 @@
 # Ponto de atendimento (comanda)
 
-## Contexto
+## Purpose
 
 > Referência visual: `openspec/reference/prototipo.html`, seção `#atendimento`.
 
