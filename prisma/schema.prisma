@@ -99,6 +99,12 @@ model Clinica {
   cnpj      String?
   criadoEm  DateTime @default(now())
 
+  // Tamanho de página da listagem /historico (capability: historico-
+  // financeiro — ver openspec/changes/implementar-historico/design.md,
+  // Decisão "Tamanho de página"). Sem tela de configuração: quem precisar
+  // de um valor diferente edita esta coluna direto no banco (ex.: pgAdmin).
+  itensPorPaginaHistorico Int @default(10)
+
   usuarios      UsuarioClinica[]
   clientes      Cliente[]
   pacientes     Paciente[]
